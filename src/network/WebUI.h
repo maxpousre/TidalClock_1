@@ -490,6 +490,7 @@ const char* getWebUI() {
         document.addEventListener('DOMContentLoaded', function() {
             refreshStatus();
             refreshSwitches();
+            loadConfiguration();
             startAutoRefresh();
         });
 
@@ -529,10 +530,6 @@ const char* getWebUI() {
                 document.getElementById('freeHeap').textContent = formatBytes(data.freeHeap);
                 document.getElementById('emergencyStopStatus').textContent = data.motor.emergencyStop ? 'ACTIVE' : 'Clear';
 
-                // Load current config into form
-                document.getElementById('switchRelease').value = data.config.switchRelease;
-                document.getElementById('maxRunTime').value = data.config.maxRunTime;
-
             } catch (error) {
                 console.error('Status refresh failed:', error);
             }
@@ -556,6 +553,21 @@ const char* getWebUI() {
 
             } catch (error) {
                 console.error('Switch refresh failed:', error);
+            }
+        }
+
+        // Load configuration values into form fields
+        async function loadConfiguration() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                // Load config values into form
+                document.getElementById('switchRelease').value = data.config.switchRelease;
+                document.getElementById('maxRunTime').value = data.config.maxRunTime;
+
+            } catch (error) {
+                console.error('Config load failed:', error);
             }
         }
 
@@ -625,6 +637,11 @@ const char* getWebUI() {
                 });
                 const data = await response.json();
                 alert(data.message || data.error);
+
+                // Reload config to confirm saved values
+                if (data.success) {
+                    loadConfiguration();
+                }
             } catch (error) {
                 alert('Save failed: ' + error);
             }
