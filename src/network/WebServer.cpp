@@ -12,7 +12,7 @@
 #include "../utils/Logger.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
-#include <ESP.h>
+#include <esp_system.h>
 
 // Static member initialization
 WebServer* TideClockWebServer::server = nullptr;
@@ -90,7 +90,7 @@ void TideClockWebServer::handleGetStatus() {
     // System state
     doc["state"] = StateManager::getStateName();
     doc["uptime"] = millis() / 1000;  // seconds
-    doc["freeHeap"] = ESP.getFreeHeap();
+    doc["freeHeap"] = esp_get_free_heap_size();
 
     // WiFi info
     JsonObject wifi = doc.createNestedObject("wifi");
