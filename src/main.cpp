@@ -1,8 +1,8 @@
 /**
  * TideClock Main Program
  *
- * Phase 1: Core Hardware Testing
- * Provides serial command interface for testing all hardware components.
+ * Phase 2: WiFi Connection & Web Interface
+ * Provides both serial command interface and web-based control.
  */
 
 #include <Arduino.h>
@@ -12,6 +12,10 @@
 #include "hardware/GPIOExpander.h"
 #include "hardware/SwitchReader.h"
 #include "hardware/MotorController.h"
+#include "core/StateManager.h"
+#include "core/ConfigManager.h"
+#include "network/WiFiManager.h"
+#include "network/WebServer.h"
 
 // Forward declarations
 void printHelp();
@@ -25,20 +29,46 @@ void setup() {
     // Print boot header
     Logger::printBootHeader();
 
+    // Initialize core systems
+    StateManager::begin();
+    ConfigManager::begin();
+
     // Initialize all hardware systems
     systemInitialization();
 
-    // Print help menu
+    // Initialize WiFi
+    WiFiManager::begin();
+    WiFiManager::connect();
+
+    // Start web server
+    TideClockWebServer::begin();
+
+    // System ready
+    StateManager::setState(STATE_READY);
+
+    // Print help menu for serial interface
     printHelp();
+
+    Logger::separator();
+    Logger::info(CAT_SYSTEM, "*** TIDECLOCK PHASE 2 READY ***");
+    Logger::info(CAT_SYSTEM, "Web interface: http://" + WiFiManager::getIPAddress());
+    Logger::info(CAT_SYSTEM, "Serial interface: Active");
+    Logger::separator();
 }
 
 void loop() {
+    // Handle web server requests
+    TideClockWebServer::handle();
+
+    // Handle WiFi events
+    WiFiManager::handle();
+
     // Check for serial commands
     if (Serial.available() > 0) {
         processSerialCommand();
     }
 
-    // Small delay to prevent overwhelming the serial buffer
+    // Small delay to prevent overwhelming the system
     delay(10);
 }
 
