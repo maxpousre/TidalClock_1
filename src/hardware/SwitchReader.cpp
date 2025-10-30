@@ -10,18 +10,21 @@ bool SwitchReader::begin() {
     Logger::info(CAT_SWITCH, "Initializing Switch Reader...");
 
     // Switch boards should already be initialized by GPIOExpander
-    // We just verify we can read from them
+    // Set initialized flag so we can test reading from them
+    initialized = true;
 
+    // Verify we can read from all switches
     bool testStates[NUM_MOTORS];
     uint8_t readCount = readAllSwitches(testStates);
 
     if (readCount == NUM_MOTORS) {
-        initialized = true;
+      
         Logger::logf(LOG_INFO, CAT_SWITCH, "Switch Reader initialized: %d switches ready", NUM_MOTORS);
         return true;
     } else {
         Logger::logf(LOG_ERROR, CAT_SWITCH, "Switch Reader initialization failed: only %d/%d switches readable",
                      readCount, NUM_MOTORS);
+        initialized = false;  // Reset flag on failure
         return false;
     }
 }
