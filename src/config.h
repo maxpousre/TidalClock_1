@@ -141,6 +141,31 @@ const SwitchPinMap SWITCH_PIN_MAP[NUM_MOTORS] = {
 };
 
 // ============================================================================
+// WIFI CONFIGURATION
+// ============================================================================
+
+#define WIFI_CONNECT_TIMEOUT 20000      // 20 seconds per connection attempt
+#define WIFI_MAX_RETRIES 3              // Number of connection attempts before AP mode
+#define AP_SSID "TideClock"             // AP mode network name
+#define AP_PASSWORD ""                  // AP mode password (empty = open network)
+#define AP_IP_ADDRESS "192.168.4.1"     // AP mode IP address
+
+// ============================================================================
+// WEB SERVER CONFIGURATION
+// ============================================================================
+
+#define WEB_SERVER_PORT 80              // HTTP server port
+#define STATUS_UPDATE_INTERVAL 500      // Web UI status refresh rate (ms)
+#define LOG_BUFFER_SIZE 50              // Number of log messages to buffer for web UI
+
+// ============================================================================
+// EEPROM CONFIGURATION
+// ============================================================================
+
+#define EEPROM_SIZE 512                 // Total EEPROM size to allocate
+#define CONFIG_MAGIC "TIDE"             // Magic string to validate EEPROM data
+
+// ============================================================================
 // SERIAL COMMUNICATION
 // ============================================================================
 
