@@ -12,10 +12,10 @@
 #include <Arduino.h>
 #include <WiFi.h>
 
-enum WiFiMode {
-    WIFI_MODE_STATION,      // Connected to user's WiFi network
-    WIFI_MODE_AP,           // Access Point mode (fallback)
-    WIFI_MODE_DISCONNECTED  // Not connected
+enum TideWiFiMode {
+    TIDE_WIFI_MODE_STATION,      // Connected to user's WiFi network
+    TIDE_WIFI_MODE_AP,           // Access Point mode (fallback)
+    TIDE_WIFI_MODE_DISCONNECTED  // Not connected
 };
 
 class WiFiManager {
@@ -49,7 +49,7 @@ public:
     /**
      * Get current WiFi mode
      */
-    static WiFiMode getMode();
+    static TideWiFiMode getMode();
 
     /**
      * Get connection info
@@ -70,7 +70,7 @@ public:
     static void printStatus();
 
 private:
-    static WiFiMode currentMode;
+    static TideWiFiMode currentMode;
     static unsigned long lastConnectionAttempt;
     static uint8_t connectionAttempts;
 

@@ -51,7 +51,7 @@ void setup() {
 
     Logger::separator();
     Logger::info(CAT_SYSTEM, "*** TIDECLOCK PHASE 2 READY ***");
-    Logger::info(CAT_SYSTEM, "Web interface: http://" + WiFiManager::getIPAddress());
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "Web interface: http://%s", WiFiManager::getIPAddress().c_str());
     Logger::info(CAT_SYSTEM, "Serial interface: Active");
     Logger::separator();
 }
