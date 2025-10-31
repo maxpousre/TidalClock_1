@@ -3,8 +3,6 @@
  */
 
 #include "MotorController.h"
-#include "network/WebServer.h"
-#include "network/WiFiManager.h"
 
 bool MotorController::initialized = false;
 bool MotorController::emergencyStop = false;
@@ -106,10 +104,6 @@ bool MotorController::runMotorForward(uint8_t motorIndex, uint16_t durationMs) {
     // Use polling loop to allow emergency stop to interrupt
     unsigned long startTime = millis();
     while ((millis() - startTime) < durationMs) {
-        // Process incoming web requests and WiFi events
-        TideClockWebServer::handle();
-        WiFiManager::handle();
-
         if (emergencyStop) {
             stopMotor(motorIndex);
             Logger::logf(LOG_WARNING, CAT_MOTOR, "Motor %d forward run interrupted by emergency stop", motorIndex);
@@ -136,10 +130,6 @@ bool MotorController::runMotorReverse(uint8_t motorIndex, uint16_t durationMs) {
     // Use polling loop to allow emergency stop to interrupt
     unsigned long startTime = millis();
     while ((millis() - startTime) < durationMs) {
-        // Process incoming web requests and WiFi events
-        TideClockWebServer::handle();
-        WiFiManager::handle();
-
         if (emergencyStop) {
             stopMotor(motorIndex);
             Logger::logf(LOG_WARNING, CAT_MOTOR, "Motor %d reverse run interrupted by emergency stop", motorIndex);
@@ -195,10 +185,6 @@ bool MotorController::releaseFromSwitch(uint8_t motorIndex) {
         // Use polling loop to allow emergency stop to interrupt
         unsigned long startTime = millis();
         while ((millis() - startTime) < SWITCH_RELEASE_INITIAL_MS) {
-            // Process incoming web requests and WiFi events
-            TideClockWebServer::handle();
-            WiFiManager::handle();
-
             if (emergencyStop) {
                 stopMotor(motorIndex);
                 Logger::logf(LOG_WARNING, CAT_HOMING, "Motor %d switch release interrupted by emergency stop", motorIndex);
@@ -256,10 +242,6 @@ HomingResult MotorController::homeSingleMotor(uint8_t motorIndex) {
     bool switchTriggered = false;
 
     while ((millis() - startTime) < HOMING_TIMEOUT_MS) {
-        // Process incoming web requests and WiFi events
-        TideClockWebServer::handle();
-        WiFiManager::handle();
-
         // Check for emergency stop
         if (emergencyStop) {
             stopMotor(motorIndex);
@@ -299,10 +281,6 @@ HomingResult MotorController::homeSingleMotor(uint8_t motorIndex) {
     // Use polling loop to allow emergency stop to interrupt
     startTime = millis();
     while ((millis() - startTime) < SWITCH_RELEASE_TIME_MS) {
-        // Process incoming web requests and WiFi events
-        TideClockWebServer::handle();
-        WiFiManager::handle();
-
         if (emergencyStop) {
             stopMotor(motorIndex);
             Logger::logf(LOG_WARNING, CAT_HOMING, "Motor %d: Back away interrupted by emergency stop", motorIndex);
@@ -355,10 +333,6 @@ uint8_t MotorController::homeAllMotors() {
             // Use polling loop to allow emergency stop to interrupt
             unsigned long pauseStart = millis();
             while ((millis() - pauseStart) < PAUSE_BETWEEN_MOTORS_MS) {
-                // Process incoming web requests and WiFi events
-                TideClockWebServer::handle();
-                WiFiManager::handle();
-
                 if (emergencyStop) {
                     Logger::warning(CAT_HOMING, "Pause interrupted by emergency stop");
                     break;
