@@ -101,7 +101,16 @@ bool MotorController::runMotorForward(uint8_t motorIndex, uint16_t durationMs) {
         return false;
     }
 
-    delay(durationMs);
+    // Use polling loop to allow emergency stop to interrupt
+    unsigned long startTime = millis();
+    while ((millis() - startTime) < durationMs) {
+        if (emergencyStop) {
+            stopMotor(motorIndex);
+            Logger::logf(LOG_WARNING, CAT_MOTOR, "Motor %d forward run interrupted by emergency stop", motorIndex);
+            return false;
+        }
+        delay(SWITCH_POLL_INTERVAL_MS);  // Check every 10ms
+    }
 
     if (!stopMotor(motorIndex)) {
         return false;
@@ -118,7 +127,16 @@ bool MotorController::runMotorReverse(uint8_t motorIndex, uint16_t durationMs) {
         return false;
     }
 
-    delay(durationMs);
+    // Use polling loop to allow emergency stop to interrupt
+    unsigned long startTime = millis();
+    while ((millis() - startTime) < durationMs) {
+        if (emergencyStop) {
+            stopMotor(motorIndex);
+            Logger::logf(LOG_WARNING, CAT_MOTOR, "Motor %d reverse run interrupted by emergency stop", motorIndex);
+            return false;
+        }
+        delay(SWITCH_POLL_INTERVAL_MS);  // Check every 10ms
+    }
 
     if (!stopMotor(motorIndex)) {
         return false;
@@ -164,14 +182,23 @@ bool MotorController::releaseFromSwitch(uint8_t motorIndex) {
             return false;
         }
 
-        delay(SWITCH_RELEASE_INITIAL_MS);
+        // Use polling loop to allow emergency stop to interrupt
+        unsigned long startTime = millis();
+        while ((millis() - startTime) < SWITCH_RELEASE_INITIAL_MS) {
+            if (emergencyStop) {
+                stopMotor(motorIndex);
+                Logger::logf(LOG_WARNING, CAT_HOMING, "Motor %d switch release interrupted by emergency stop", motorIndex);
+                return false;
+            }
+            delay(SWITCH_POLL_INTERVAL_MS);  // Check every 10ms
+        }
 
         if (!stopMotor(motorIndex)) {
             return false;
         }
 
         // Verify switch is now released
-        delay(50);  // Brief stabilization delay
+        delay(50);  // Brief stabilization delay (too short to need polling)
         if (SwitchReader::isSwitchTriggered(motorIndex)) {
             Logger::logf(LOG_WARNING, CAT_HOMING, "Motor %d switch still triggered after release attempt", motorIndex);
             return false;
@@ -251,7 +278,16 @@ HomingResult MotorController::homeSingleMotor(uint8_t motorIndex) {
         return HOMING_MOTOR_ERROR;
     }
 
-    delay(SWITCH_RELEASE_TIME_MS);
+    // Use polling loop to allow emergency stop to interrupt
+    startTime = millis();
+    while ((millis() - startTime) < SWITCH_RELEASE_TIME_MS) {
+        if (emergencyStop) {
+            stopMotor(motorIndex);
+            Logger::logf(LOG_WARNING, CAT_HOMING, "Motor %d: Back away interrupted by emergency stop", motorIndex);
+            return HOMING_CANCELLED;
+        }
+        delay(SWITCH_POLL_INTERVAL_MS);  // Check every 10ms
+    }
 
     stopMotor(motorIndex);
 
@@ -294,7 +330,15 @@ uint8_t MotorController::homeAllMotors() {
 
         // Pause between motors (except after last motor)
         if (i < NUM_MOTORS - 1) {
-            delay(PAUSE_BETWEEN_MOTORS_MS);
+            // Use polling loop to allow emergency stop to interrupt
+            unsigned long pauseStart = millis();
+            while ((millis() - pauseStart) < PAUSE_BETWEEN_MOTORS_MS) {
+                if (emergencyStop) {
+                    Logger::warning(CAT_HOMING, "Pause interrupted by emergency stop");
+                    break;
+                }
+                delay(SWITCH_POLL_INTERVAL_MS);  // Check every 10ms
+            }
         }
     }
 
