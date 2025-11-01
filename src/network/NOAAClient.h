@@ -85,10 +85,11 @@ private:
      * tideHeight: Tide height in feet (MLLW)
      * minTide: Minimum expected tide (from config)
      * maxTide: Maximum expected tide (from config)
+     * maxRunTime: Maximum motor run time (from config)
      *
-     * Returns: Motor run time in milliseconds (0-9000)
+     * Returns: Motor run time in milliseconds (0-maxRunTime)
      */
-    static uint16_t scaleToRunTime(float tideHeight, float minTide, float maxTide);
+    static uint16_t scaleToRunTime(float tideHeight, float minTide, float maxTide, uint16_t maxRunTime);
 
     /**
      * Apply motor-specific offset multipliers
