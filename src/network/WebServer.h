@@ -50,7 +50,12 @@ private:
     static void handleClearStop();
     static void handleTestMotor();
     static void handleSaveConfig();
-    static void handleFetchStub();
+
+    // Phase 3: NOAA Integration endpoints
+    static void handleFetchTide();
+    static void handleGetTideData();
+    static void handleRunTide();
+    static void handleSyncTime();
 
     // Helper functions
     static void sendJSON(int code, const char* json);

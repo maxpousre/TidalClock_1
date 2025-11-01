@@ -14,6 +14,11 @@
 #include <ArduinoJson.h>
 #include <esp_system.h>
 
+// Phase 3: NOAA Integration
+#include "TimeManager.h"
+#include "NOAAClient.h"
+#include "../data/TideData.h"
+
 // Static member initialization
 WebServer* TideClockWebServer::server = nullptr;
 bool TideClockWebServer::running = false;
@@ -37,7 +42,13 @@ void TideClockWebServer::begin() {
     server->on("/api/clear-stop", HTTP_POST, handleClearStop);
     server->on("/api/test-motor", HTTP_POST, handleTestMotor);
     server->on("/api/save-config", HTTP_POST, handleSaveConfig);
-    server->on("/api/fetch", HTTP_POST, handleFetchStub);
+
+    // Phase 3: NOAA Integration routes
+    server->on("/api/fetch", HTTP_POST, handleFetchTide);
+    server->on("/api/tide-data", HTTP_GET, handleGetTideData);
+    server->on("/api/run-tide", HTTP_POST, handleRunTide);
+    server->on("/api/sync-time", HTTP_POST, handleSyncTime);
+
     server->onNotFound(handleNotFound);
 
     server->begin();
@@ -105,6 +116,9 @@ void TideClockWebServer::handleGetStatus() {
     JsonObject cfg = doc.createNestedObject("config");
     cfg["switchRelease"] = config.switchReleaseTime;
     cfg["maxRunTime"] = config.maxRunTime;
+    cfg["stationID"] = config.stationID;
+    cfg["minTideHeight"] = config.minTideHeight;
+    cfg["maxTideHeight"] = config.maxTideHeight;
 
     // Error message (if in ERROR state)
     if (StateManager::getState() == STATE_ERROR) {
@@ -335,6 +349,22 @@ void TideClockWebServer::handleSaveConfig() {
         Logger::info(CAT_SYSTEM, "Motor timing updated");
     }
 
+    // Phase 3: Update NOAA configuration if provided
+    if (doc.containsKey("stationID")) {
+        const char* stationID = doc["stationID"];
+        ConfigManager::setNOAAStation(stationID);
+        configChanged = true;
+        Logger::logf(LOG_INFO, CAT_SYSTEM, "NOAA station ID updated: %s", stationID);
+    }
+
+    if (doc.containsKey("minTide") && doc.containsKey("maxTide")) {
+        float minTide = doc["minTide"];
+        float maxTide = doc["maxTide"];
+        ConfigManager::setTideRange(minTide, maxTide);
+        configChanged = true;
+        Logger::logf(LOG_INFO, CAT_SYSTEM, "Tide range updated: %.1f - %.1f ft", minTide, maxTide);
+    }
+
     // Save to EEPROM
     if (configChanged) {
         if (ConfigManager::save()) {
@@ -347,9 +377,193 @@ void TideClockWebServer::handleSaveConfig() {
     }
 }
 
-void TideClockWebServer::handleFetchStub() {
-    // Phase 3 stub - NOAA integration not yet implemented
-    sendError(501, "NOAA integration coming in Phase 3");
+// ============================================================================
+// PHASE 3: NOAA INTEGRATION API HANDLERS
+// ============================================================================
+
+void TideClockWebServer::handleFetchTide() {
+    Logger::info(CAT_WEB, "API: Fetch tide data requested");
+
+    // Check if time is synced
+    if (!TimeManager::isTimeSynced()) {
+        sendError(400, "Time not synchronized - sync with NTP first");
+        return;
+    }
+
+    // Get station ID from config
+    const TideClockConfig& config = ConfigManager::getConfig();
+    if (strlen(config.stationID) == 0) {
+        sendError(400, "NOAA station ID not configured");
+        return;
+    }
+
+    // Set state to FETCHING_DATA
+    StateManager::setState(STATE_FETCHING_DATA);
+
+    // Fetch data from NOAA
+    TideDataset* dataset = TideDataManager::getMutableDataset();
+    NOAAClient::FetchResult result = NOAAClient::fetchTidePredictions(
+        config.stationID,
+        dataset,
+        10000  // 10 second timeout
+    );
+
+    // Return to READY state
+    StateManager::setState(STATE_READY);
+
+    // Handle result
+    if (result == NOAAClient::SUCCESS) {
+        TideDataManager::setData(dataset);
+
+        // Build success response
+        StaticJsonDocument<512> doc;
+        doc["success"] = true;
+        doc["message"] = "Fetched " + String(dataset->recordCount) + " hours of tide data";
+        doc["stationID"] = dataset->stationID;
+        doc["stationName"] = dataset->stationName;
+        doc["recordCount"] = dataset->recordCount;
+        doc["fetchTime"] = TimeManager::getFormattedDateTime();
+
+        // Tide range
+        float minTide = 999.0;
+        float maxTide = -999.0;
+        for (uint8_t i = 0; i < 24; i++) {
+            float tide = dataset->hours[i].rawTideHeight;
+            if (tide < minTide) minTide = tide;
+            if (tide > maxTide) maxTide = tide;
+        }
+        JsonObject tideRange = doc.createNestedObject("tideRange");
+        tideRange["min"] = minTide;
+        tideRange["max"] = maxTide;
+
+        String output;
+        serializeJson(doc, output);
+        sendJSON(200, output.c_str());
+    } else {
+        const char* errorMsg = NOAAClient::getErrorMessage(result);
+        TideDataManager::setError(errorMsg);
+        sendError(500, errorMsg);
+    }
+}
+
+void TideClockWebServer::handleGetTideData() {
+    const TideDataset* dataset = TideDataManager::getCurrentDataset();
+
+    StaticJsonDocument<4096> doc;  // Larger buffer for 24 hours of data
+
+    if (!TideDataManager::isDataValid()) {
+        doc["available"] = false;
+        doc["message"] = "No valid tide data - fetch data first";
+
+        String output;
+        serializeJson(doc, output);
+        sendJSON(200, output.c_str());
+        return;
+    }
+
+    // Build response with all tide data
+    doc["available"] = true;
+    doc["stationID"] = dataset->stationID;
+    doc["stationName"] = dataset->stationName;
+    doc["fetchTime"] = ctime(&dataset->fetchTime);
+    doc["dataAge"] = TideDataManager::getDataAgeString();
+    doc["isStale"] = TideDataManager::isDataStale();
+    doc["recordCount"] = dataset->recordCount;
+
+    // Current hour
+    if (TimeManager::isTimeSynced()) {
+        doc["currentHour"] = TimeManager::getCurrentHour();
+    }
+
+    // Hourly data array
+    JsonArray hours = doc.createNestedArray("hours");
+    for (uint8_t i = 0; i < 24; i++) {
+        const HourlyTideData* hourData = &dataset->hours[i];
+
+        JsonObject hour = hours.createNestedObject();
+        hour["hour"] = hourData->hour;
+        hour["timestamp"] = hourData->timestamp;
+        hour["tideHeight"] = hourData->rawTideHeight;
+        hour["scaledTime"] = hourData->scaledRunTime;
+        hour["finalTime"] = hourData->finalRunTime;
+        hour["offset"] = ConfigManager::getMotorOffset(i);
+    }
+
+    String output;
+    serializeJson(doc, output);
+    sendJSON(200, output.c_str());
+}
+
+void TideClockWebServer::handleRunTide() {
+    Logger::info(CAT_WEB, "API: Run tide sequence requested");
+
+    // Parse request body for dry run option
+    bool dryRun = false;
+    if (server->hasArg("plain")) {
+        StaticJsonDocument<256> doc;
+        DeserializationError error = deserializeJson(doc, server->arg("plain"));
+
+        if (!error) {
+            dryRun = doc["dryRun"] | false;
+        }
+    }
+
+    // Get tide data
+    TideDataset* dataset = TideDataManager::getMutableDataset();
+    if (!TideDataManager::isDataValid()) {
+        sendError(400, "No valid tide data - fetch data first");
+        return;
+    }
+
+    // Check system state
+    if (StateManager::getState() != STATE_READY) {
+        sendError(400, "System not ready - current state: " + String(StateManager::getStateName()));
+        return;
+    }
+
+    // Set state
+    if (!dryRun) {
+        StateManager::setState(STATE_RUNNING_TIDE);
+    }
+
+    // Run tide sequence
+    bool success = MotorController::runTideSequence(dataset, dryRun);
+
+    // Return to READY state
+    if (!dryRun) {
+        StateManager::setState(STATE_READY);
+    }
+
+    // Send response
+    if (success) {
+        if (dryRun) {
+            sendSuccess("Dry run completed - check logs for details");
+        } else {
+            sendSuccess("Tide sequence completed - 24 motors positioned");
+        }
+    } else {
+        sendError(500, "Tide sequence failed - check logs for details");
+    }
+}
+
+void TideClockWebServer::handleSyncTime() {
+    Logger::info(CAT_WEB, "API: NTP sync requested");
+
+    bool success = TimeManager::syncWithNTP(10000);
+
+    if (success) {
+        StaticJsonDocument<256> doc;
+        doc["success"] = true;
+        doc["message"] = "Time synchronized successfully";
+        doc["currentTime"] = TimeManager::getFormattedDateTime();
+        doc["epochTime"] = TimeManager::getEpochTime();
+
+        String output;
+        serializeJson(doc, output);
+        sendJSON(200, output.c_str());
+    } else {
+        sendError(500, "NTP sync failed - check WiFi connection");
+    }
 }
 
 // ============================================================================

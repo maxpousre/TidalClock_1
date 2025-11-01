@@ -11,20 +11,17 @@
 #include <Arduino.h>
 
 /**
- * System State Enumeration (Phase 2 subset)
- * Full state machine will be expanded in Phase 4
+ * System State Enumeration
  */
 enum SystemState {
     STATE_BOOT,             // System startup in progress
     STATE_READY,            // Idle, ready for operations
     STATE_HOMING,           // Homing operation in progress
     STATE_TESTING,          // Manual motor testing in progress
+    STATE_RUNNING_TIDE,     // Phase 3: Running tide sequence
+    STATE_FETCHING_DATA,    // Phase 3: Fetching NOAA data
     STATE_EMERGENCY_STOP,   // Emergency stop active
     STATE_ERROR             // System error condition
-
-    // Phase 3+ states (not yet implemented):
-    // STATE_FETCHING_DATA,
-    // STATE_RUNNING_PROGRAM
 };
 
 class StateManager {

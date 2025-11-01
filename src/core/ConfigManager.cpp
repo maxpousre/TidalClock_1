@@ -127,6 +127,84 @@ void ConfigManager::setMotorTiming(uint16_t switchRelease, uint16_t maxRun) {
                  switchRelease, maxRun);
 }
 
+void ConfigManager::setNOAAStation(const char* stationID) {
+    if (stationID == nullptr || strlen(stationID) == 0) {
+        Logger::warning(CAT_SYSTEM, "Station ID cannot be empty");
+        return;
+    }
+
+    strncpy(config.stationID, stationID, sizeof(config.stationID) - 1);
+    config.stationID[sizeof(config.stationID) - 1] = '\0';
+
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "NOAA station ID updated: %s", stationID);
+}
+
+void ConfigManager::setTideRange(float minHeight, float maxHeight) {
+    // Validate ranges
+    if (minHeight >= maxHeight) {
+        Logger::warning(CAT_SYSTEM, "Invalid tide range - min must be less than max");
+        return;
+    }
+
+    if (minHeight < -5.0 || maxHeight > 50.0) {
+        Logger::warning(CAT_SYSTEM, "Tide range out of reasonable bounds (-5 to 50 feet)");
+        return;
+    }
+
+    config.minTideHeight = minHeight;
+    config.maxTideHeight = maxHeight;
+
+    Logger::logf(LOG_INFO, CAT_SYSTEM,
+                 "Tide range updated: %.1f to %.1f feet",
+                 minHeight, maxHeight);
+}
+
+void ConfigManager::setMotorOffset(uint8_t motorIndex, float offset) {
+    if (motorIndex >= 24) {
+        Logger::warning(CAT_SYSTEM, "Invalid motor index");
+        return;
+    }
+
+    if (offset < 0.5 || offset > 1.5) {
+        Logger::warning(CAT_SYSTEM, "Motor offset out of range (0.5-1.5)");
+        return;
+    }
+
+    config.motorOffsets[motorIndex] = offset;
+
+    Logger::logf(LOG_INFO, CAT_SYSTEM,
+                 "Motor %u offset updated: %.3f",
+                 motorIndex, offset);
+}
+
+float ConfigManager::getMotorOffset(uint8_t motorIndex) {
+    if (motorIndex >= 24) {
+        return 1.0;  // Default if invalid
+    }
+    return config.motorOffsets[motorIndex];
+}
+
+void ConfigManager::resetMotorOffsets() {
+    Logger::info(CAT_SYSTEM, "Resetting all motor offsets to 1.0");
+    for (uint8_t i = 0; i < 24; i++) {
+        config.motorOffsets[i] = 1.0;
+    }
+}
+
+void ConfigManager::setAutoFetch(bool enabled, uint8_t hour) {
+    if (hour > 23) {
+        Logger::warning(CAT_SYSTEM, "Invalid fetch hour (0-23)");
+        return;
+    }
+
+    config.autoFetchEnabled = enabled;
+    config.fetchHour = hour;
+
+    Logger::logf(LOG_INFO, CAT_SYSTEM,
+                 "Auto-fetch %s (hour: %u)",
+                 enabled ? "enabled" : "disabled", hour);
+}
+
 bool ConfigManager::isValid() {
     return configLoaded && (strncmp(config.magic, CONFIG_MAGIC, 4) == 0);
 }
@@ -171,6 +249,18 @@ void ConfigManager::setDefaults() {
     // Default motor timing from config.h
     config.switchReleaseTime = SWITCH_RELEASE_TIME_MS;
     config.maxRunTime = MAX_RUN_TIME_MS;
+
+    // Phase 3: NOAA defaults
+    config.stationID[0] = '\0';         // Empty - user must configure
+    config.minTideHeight = 0.0;         // 0 feet MLLW
+    config.maxTideHeight = 6.0;         // 6 feet MLLW (typical range)
+    config.autoFetchEnabled = false;    // Manual fetch only by default
+    config.fetchHour = 0;               // Midnight (if enabled)
+
+    // Initialize all motor offsets to 1.0 (no adjustment)
+    for (uint8_t i = 0; i < 24; i++) {
+        config.motorOffsets[i] = 1.0;
+    }
 
     // Checksum will be calculated when saved
     config.checksum = 0;
