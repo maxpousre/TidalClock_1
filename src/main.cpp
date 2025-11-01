@@ -54,7 +54,8 @@ void setup() {
     if (WiFiManager::isConnected()) {
         Logger::info(CAT_SYSTEM, "Synchronizing time with NTP servers...");
         if (TimeManager::syncWithNTP(10000)) {
-            Logger::info(CAT_SYSTEM, "NTP sync successful: " + TimeManager::getFormattedDateTime());
+            String dateTime = TimeManager::getFormattedDateTime();
+            Logger::logf(LOG_INFO, CAT_SYSTEM, "NTP sync successful: %s", dateTime.c_str());
         } else {
             Logger::warning(CAT_SYSTEM, "NTP sync failed - tide fetch will not work until time is synced");
         }

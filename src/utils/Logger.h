@@ -31,7 +31,8 @@ enum LogCategory {
     CAT_MOTOR,      // Motor operations
     CAT_SWITCH,     // Switch readings
     CAT_HOMING,     // Homing sequences
-    CAT_TEST        // Testing/debug commands
+    CAT_TEST,       // Testing/debug commands
+    CAT_WEB         // Web server and API
 };
 
 class Logger {

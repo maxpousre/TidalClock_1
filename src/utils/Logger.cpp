@@ -118,6 +118,7 @@ const char* Logger::getCategoryPrefix(LogCategory category) {
         case CAT_SWITCH:  return "[SWITCH]";
         case CAT_HOMING:  return "[HOMING]";
         case CAT_TEST:    return "[TEST  ]";
+        case CAT_WEB:     return "[WEB   ]";
         default:          return "[??????]";
     }
 }
