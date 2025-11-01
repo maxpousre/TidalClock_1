@@ -188,6 +188,7 @@ bool NOAAClient::parseJSON(const String& response, TideDataset* output) {
     const TideClockConfig& config = ConfigManager::getConfig();
     float minTide = config.minTideHeight;
     float maxTide = config.maxTideHeight;
+    uint16_t maxRunTime = config.maxRunTime;  // Get runtime max motor time
 
     // Parse each prediction
     uint8_t validCount = 0;
@@ -233,7 +234,7 @@ bool NOAAClient::parseJSON(const String& response, TideDataset* output) {
         hourData->timestamp[sizeof(hourData->timestamp) - 1] = '\0';
 
         hourData->rawTideHeight = tideHeight;
-        hourData->scaledRunTime = scaleToRunTime(tideHeight, minTide, maxTide);
+        hourData->scaledRunTime = scaleToRunTime(tideHeight, minTide, maxTide, maxRunTime);
         hourData->finalRunTime = 0;  // Will be set in applyMotorOffsets()
 
         validCount++;
@@ -294,7 +295,7 @@ bool NOAAClient::validateData(TideDataset* data) {
     return true;
 }
 
-uint16_t NOAAClient::scaleToRunTime(float tideHeight, float minTide, float maxTide) {
+uint16_t NOAAClient::scaleToRunTime(float tideHeight, float minTide, float maxTide, uint16_t maxRunTime) {
     // Handle edge case: zero range
     float tideRange = maxTide - minTide;
     if (tideRange <= 0.0) {
@@ -305,19 +306,19 @@ uint16_t NOAAClient::scaleToRunTime(float tideHeight, float minTide, float maxTi
     // Normalize tide height to 0.0-1.0 range
     float normalized = (tideHeight - minTide) / tideRange;
 
-    // Scale to motor run time (0-9000 ms)
-    float scaledTime = normalized * MAX_RUN_TIME_MS;
+    // Scale to motor run time (0-maxRunTime ms) - using configured max, not hardcoded
+    float scaledTime = normalized * maxRunTime;
 
     // Clamp to valid range
     if (scaledTime < 0.0) {
         Logger::logf(LOG_WARNING, CAT_SYSTEM,
                     "NOAA: Tide %.2f below minimum, clamped to 0ms", tideHeight);
         scaledTime = 0.0;
-    } else if (scaledTime > MAX_RUN_TIME_MS) {
+    } else if (scaledTime > maxRunTime) {
         Logger::logf(LOG_WARNING, CAT_SYSTEM,
                     "NOAA: Tide %.2f above maximum, clamped to %ums",
-                    tideHeight, MAX_RUN_TIME_MS);
-        scaledTime = MAX_RUN_TIME_MS;
+                    tideHeight, maxRunTime);
+        scaledTime = maxRunTime;
     }
 
     return (uint16_t)(scaledTime + 0.5);  // Round to nearest integer
@@ -330,6 +331,10 @@ void NOAAClient::applyMotorOffsets(TideDataset* data) {
 
     Logger::info(CAT_SYSTEM, "NOAA: Applying motor offsets...");
 
+    // Get configured max run time
+    const TideClockConfig& config = ConfigManager::getConfig();
+    uint16_t maxRunTime = config.maxRunTime;
+
     for (uint8_t hour = 0; hour < 24; hour++) {
         HourlyTideData* hourData = &data->hours[hour];
 
@@ -339,9 +344,9 @@ void NOAAClient::applyMotorOffsets(TideDataset* data) {
         // Apply offset
         float finalTime = hourData->scaledRunTime * offset;
 
-        // Clamp to maximum
-        if (finalTime > MAX_RUN_TIME_MS) {
-            finalTime = MAX_RUN_TIME_MS;
+        // Clamp to configured maximum (not hardcoded)
+        if (finalTime > maxRunTime) {
+            finalTime = maxRunTime;
         }
 
         // Round and store
