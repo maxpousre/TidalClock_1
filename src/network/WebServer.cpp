@@ -517,7 +517,8 @@ void TideClockWebServer::handleRunTide() {
 
     // Check system state
     if (StateManager::getState() != STATE_READY) {
-        sendError(400, "System not ready - current state: " + String(StateManager::getStateName()));
+        String errorMsg = String("System not ready - current state: ") + StateManager::getStateName();
+        sendError(400, errorMsg.c_str());
         return;
     }
 
