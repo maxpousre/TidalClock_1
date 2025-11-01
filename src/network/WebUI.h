@@ -267,6 +267,15 @@ const char* getWebUI() {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .current-hour {
+            background: #e3f2fd;
+            font-weight: bold;
+        }
+        small {
+            display: block;
+            margin-top: 5px;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
@@ -304,34 +313,39 @@ const char* getWebUI() {
                 <div class="card">
                     <h3>System Control</h3>
                     <button class="btn btn-success" onclick="homeAllMotors()">Reset to Home</button>
-                    <button class="btn btn-primary" onclick="fetchAndRun()" disabled title="Coming in Phase 3">Fetch & Run Now</button>
+                    <button class="btn btn-primary" onclick="fetchTideData()">Fetch Tide Data</button>
+                    <button class="btn btn-primary" id="runTideBtn" onclick="runTideSequence(false)" disabled>Run Tide Sequence</button>
+                    <button class="btn btn-secondary" id="dryRunBtn" onclick="runTideSequence(true)" disabled>Preview (Dry Run)</button>
                     <button class="btn btn-danger" onclick="emergencyStop()">EMERGENCY STOP</button>
                     <button class="btn btn-secondary" onclick="clearEmergencyStop()">Clear E-Stop</button>
                 </div>
 
                 <div class="card">
                     <h3>Tide Data (24-Hour Forecast)</h3>
-                    <div class="alert alert-info">
-                        <strong>Phase 3 Feature:</strong> NOAA tide data integration coming soon. This table will display hourly tide predictions and motor positioning times.
+                    <div id="tideInfo" style="display: none; margin-bottom: 15px;">
+                        <p><strong>Station:</strong> <span id="stationDisplay">-</span></p>
+                        <p><strong>Last Updated:</strong> <span id="fetchTime">-</span></p>
+                        <p><strong>Data Age:</strong> <span id="dataAge">-</span></p>
                     </div>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Hour</th>
-                                <th>Raw Tide (ft)</th>
-                                <th>Motor Time (ms)</th>
-                                <th>Offset</th>
-                                <th>Final Time (ms)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tideDataTable">
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 30px;">
-                                    No tide data available. Click "Fetch & Run Now" to retrieve data.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px;">
+                        <table>
+                            <thead style="position: sticky; top: 0; background: #edf2f7;">
+                                <tr>
+                                    <th>Hour</th>
+                                    <th>Time</th>
+                                    <th>Tide (ft)</th>
+                                    <th>Motor (ms)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tideDataTable">
+                                <tr>
+                                    <td colspan="4" style="text-align: center; padding: 30px;">
+                                        No tide data available. Click "Fetch Tide Data" to retrieve predictions.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -427,10 +441,24 @@ const char* getWebUI() {
                 </div>
 
                 <div class="card">
-                    <h3>NOAA Configuration</h3>
-                    <div class="alert alert-info">
-                        <strong>Phase 3 Feature:</strong> NOAA station configuration (Station ID, tide range) coming soon.
+                    <h3>NOAA Tide Station</h3>
+                    <div class="form-group">
+                        <label>NOAA Station ID</label>
+                        <input type="text" id="stationID" placeholder="e.g., 8729108" maxlength="10">
+                        <small style="color: #718096;">Enter your local NOAA tide station code</small>
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Minimum Tide (feet)</label>
+                            <input type="number" id="minTide" step="0.1" value="0.0">
+                        </div>
+                        <div class="form-group">
+                            <label>Maximum Tide (feet)</label>
+                            <input type="number" id="maxTide" step="0.1" value="6.0">
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" onclick="syncTime()">Sync Time (NTP)</button>
+                    <small id="timeStatus" style="display: block; margin-top: 10px; color: #718096;">Time not synced</small>
                 </div>
 
                 <div class="card">
@@ -491,6 +519,7 @@ const char* getWebUI() {
             refreshStatus();
             refreshSwitches();
             loadConfiguration();
+            updateTideDisplay();
             startAutoRefresh();
         });
 
@@ -566,6 +595,13 @@ const char* getWebUI() {
                 document.getElementById('switchRelease').value = data.config.switchRelease;
                 document.getElementById('maxRunTime').value = data.config.maxRunTime;
 
+                // Load NOAA config if available
+                if (data.config.stationID) {
+                    document.getElementById('stationID').value = data.config.stationID || '';
+                    document.getElementById('minTide').value = data.config.minTideHeight || 0.0;
+                    document.getElementById('maxTide').value = data.config.maxTideHeight || 6.0;
+                }
+
             } catch (error) {
                 console.error('Config load failed:', error);
             }
@@ -626,7 +662,10 @@ const char* getWebUI() {
                 wifiSSID: document.getElementById('wifiSSID').value,
                 wifiPassword: document.getElementById('wifiPassword').value,
                 switchRelease: parseInt(document.getElementById('switchRelease').value),
-                maxRunTime: parseInt(document.getElementById('maxRunTime').value)
+                maxRunTime: parseInt(document.getElementById('maxRunTime').value),
+                stationID: document.getElementById('stationID').value,
+                minTide: parseFloat(document.getElementById('minTide').value),
+                maxTide: parseFloat(document.getElementById('maxTide').value)
             };
 
             try {
@@ -647,8 +686,113 @@ const char* getWebUI() {
             }
         }
 
-        async function fetchAndRun() {
-            alert('NOAA integration coming in Phase 3');
+        async function fetchTideData() {
+            try {
+                const response = await fetch('/api/fetch', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Tide data fetched successfully: ' + data.recordCount + ' hours');
+                    await updateTideDisplay();
+                } else {
+                    alert('Failed to fetch tide data: ' + (data.error || data.message));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        async function runTideSequence(dryRun) {
+            const message = dryRun
+                ? 'Preview tide sequence? (motors will not move)'
+                : 'Run tide sequence? This will move all 24 motors.';
+
+            if (!confirm(message)) return;
+
+            try {
+                const response = await fetch('/api/run-tide', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ dryRun })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                } else {
+                    alert('Failed: ' + (data.error || data.message));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        async function syncTime() {
+            try {
+                const response = await fetch('/api/sync-time', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('timeStatus').textContent = 'Time synced: ' + data.currentTime;
+                    alert('Time synchronized successfully');
+                } else {
+                    document.getElementById('timeStatus').textContent = 'Time sync failed';
+                    alert('Time sync failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        async function updateTideDisplay() {
+            try {
+                const response = await fetch('/api/tide-data');
+                const data = await response.json();
+
+                const tbody = document.getElementById('tideDataTable');
+
+                if (!data.available) {
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;">' +
+                                     (data.message || 'No tide data available') + '</td></tr>';
+                    document.getElementById('runTideBtn').disabled = true;
+                    document.getElementById('dryRunBtn').disabled = true;
+                    document.getElementById('tideInfo').style.display = 'none';
+                    return;
+                }
+
+                // Update info section
+                document.getElementById('stationDisplay').textContent =
+                    data.stationName || data.stationID;
+                document.getElementById('fetchTime').textContent = data.fetchTime;
+                document.getElementById('dataAge').textContent = data.dataAge;
+                document.getElementById('tideInfo').style.display = 'block';
+
+                // Enable run buttons
+                document.getElementById('runTideBtn').disabled = false;
+                document.getElementById('dryRunBtn').disabled = false;
+
+                // Populate table
+                tbody.innerHTML = '';
+                data.hours.forEach(hour => {
+                    const row = tbody.insertRow();
+                    const isCurrentHour = hour.hour === data.currentHour;
+
+                    if (isCurrentHour) {
+                        row.className = 'current-hour';
+                    }
+
+                    row.innerHTML = `
+                        <td>${hour.hour}</td>
+                        <td>${hour.timestamp.substring(11, 16)}</td>
+                        <td>${hour.tideHeight.toFixed(2)}</td>
+                        <td>${hour.finalTime}</td>
+                    `;
+                });
+
+            } catch (error) {
+                console.error('Failed to update tide display:', error);
+            }
         }
 
         // Utility functions

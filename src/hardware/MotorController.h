@@ -98,6 +98,14 @@ public:
     static uint8_t homeAllMotors();
 
     /**
+     * Phase 3: Run all motors to tide-based positions
+     * @param tideData Pointer to TideDataset with 24 hours of position data
+     * @param dryRun If true, log positions without moving motors
+     * @return true if sequence completed successfully
+     */
+    static bool runTideSequence(struct TideDataset* tideData, bool dryRun = false);
+
+    /**
      * Get text description of homing result
      */
     static const char* getHomingResultString(HomingResult result);

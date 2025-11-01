@@ -20,15 +20,16 @@ struct TideClockConfig {
     char wifiPassword[64];          // WiFi password
     uint16_t switchReleaseTime;     // Time to back away from switch (ms)
     uint16_t maxRunTime;            // Maximum motor runtime (ms)
-    uint16_t checksum;              // Simple checksum for validation
 
-    // Phase 3+ fields (stubbed for future use):
-    // char stationID[10];
-    // float minTideHeight;
-    // float maxTideHeight;
-    // uint8_t fetchHour;
-    // bool autoFetchEnabled;
-    // float motorOffsets[24];
+    // Phase 3: NOAA Integration
+    char stationID[10];             // NOAA station ID (e.g., "8729108")
+    float minTideHeight;            // Expected minimum tide (feet, MLLW)
+    float maxTideHeight;            // Expected maximum tide (feet, MLLW)
+    float motorOffsets[24];         // Motor-specific calibration multipliers
+    bool autoFetchEnabled;          // Enable automatic daily fetch
+    uint8_t fetchHour;              // Hour to fetch (0-23, for automatic mode)
+
+    uint16_t checksum;              // Simple checksum for validation
 };
 
 class ConfigManager {
@@ -70,6 +71,36 @@ public:
      * Update motor timing parameters
      */
     static void setMotorTiming(uint16_t switchRelease, uint16_t maxRun);
+
+    /**
+     * Update NOAA station configuration
+     */
+    static void setNOAAStation(const char* stationID);
+
+    /**
+     * Update tide range configuration
+     */
+    static void setTideRange(float minHeight, float maxHeight);
+
+    /**
+     * Update motor offset for specific motor
+     */
+    static void setMotorOffset(uint8_t motorIndex, float offset);
+
+    /**
+     * Get motor offset for specific motor
+     */
+    static float getMotorOffset(uint8_t motorIndex);
+
+    /**
+     * Reset all motor offsets to 1.0
+     */
+    static void resetMotorOffsets();
+
+    /**
+     * Update automatic fetch settings
+     */
+    static void setAutoFetch(bool enabled, uint8_t hour);
 
     /**
      * Validation helpers

@@ -3,6 +3,8 @@
  */
 
 #include "MotorController.h"
+#include "../data/TideData.h"
+#include "../core/StateManager.h"
 
 bool MotorController::initialized = false;
 bool MotorController::emergencyStop = false;
@@ -307,6 +309,100 @@ uint8_t MotorController::homeAllMotors() {
     Logger::separator();
 
     return successCount;
+}
+
+bool MotorController::runTideSequence(TideDataset* tideData, bool dryRun) {
+    // Validate inputs
+    if (tideData == nullptr) {
+        Logger::error(CAT_MOTOR, "Tide sequence: Null tide data provided");
+        return false;
+    }
+
+    if (!tideData->isValid) {
+        Logger::error(CAT_MOTOR, "Tide sequence: Tide data is not valid");
+        return false;
+    }
+
+    if (tideData->recordCount != 24) {
+        Logger::logf(LOG_ERROR, CAT_MOTOR,
+                    "Tide sequence: Incomplete data (%u/24 hours)",
+                    tideData->recordCount);
+        return false;
+    }
+
+    if (emergencyStop) {
+        Logger::error(CAT_MOTOR, "Tide sequence: Cannot run - emergency stop active");
+        return false;
+    }
+
+    // Log sequence start
+    Logger::separator();
+    if (dryRun) {
+        Logger::info(CAT_MOTOR, "=== TIDE SEQUENCE DRY RUN ===");
+        Logger::info(CAT_MOTOR, "Motors will NOT move - preview only");
+    } else {
+        Logger::info(CAT_MOTOR, "=== STARTING TIDE SEQUENCE ===");
+    }
+    Logger::logf(LOG_INFO, CAT_MOTOR,
+                "Station: %s | Fetch time: %s",
+                tideData->stationID,
+                ctime(&tideData->fetchTime));
+    Logger::separator();
+
+    uint8_t successCount = 0;
+    unsigned long totalStartTime = millis();
+
+    // Run each motor sequentially (motor index = hour)
+    for (uint8_t motor = 0; motor < 24; motor++) {
+        // Check for emergency stop
+        if (emergencyStop) {
+            Logger::warning(CAT_MOTOR, "Tide sequence aborted by emergency stop");
+            return false;
+        }
+
+        HourlyTideData* hourData = &tideData->hours[motor];
+        uint16_t runTime = hourData->finalRunTime;
+
+        Logger::logf(LOG_INFO, CAT_MOTOR,
+                    "Motor %02u | Hour %02u | Tide: %.2f ft | Run: %u ms",
+                    motor, hourData->hour, hourData->rawTideHeight, runTime);
+
+        if (dryRun) {
+            // Dry run - just log, don't move
+            Logger::logf(LOG_INFO, CAT_MOTOR,
+                        "  [DRY RUN] Would run motor %u for %u ms", motor, runTime);
+            successCount++;
+        } else {
+            // Actually run the motor
+            if (runMotorForward(motor, runTime)) {
+                successCount++;
+            } else {
+                Logger::logf(LOG_ERROR, CAT_MOTOR,
+                            "Motor %u failed to run", motor);
+            }
+        }
+
+        // Pause between motors (except after last motor)
+        if (motor < 23 && !dryRun) {
+            delay(PAUSE_BETWEEN_MOTORS_MS);
+        }
+    }
+
+    unsigned long totalTime = millis() - totalStartTime;
+
+    Logger::separator();
+    if (dryRun) {
+        Logger::info(CAT_MOTOR, "=== DRY RUN COMPLETE ===");
+    } else {
+        Logger::info(CAT_MOTOR, "=== TIDE SEQUENCE COMPLETE ===");
+    }
+    Logger::logf(LOG_INFO, CAT_MOTOR,
+                "Results: %u/24 motors positioned successfully", successCount);
+    Logger::logf(LOG_INFO, CAT_MOTOR,
+                "Total time: %lu seconds", totalTime / 1000);
+    Logger::separator();
+
+    return (successCount == 24);
 }
 
 const char* MotorController::getHomingResultString(HomingResult result) {

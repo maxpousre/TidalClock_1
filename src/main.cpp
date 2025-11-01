@@ -1,8 +1,8 @@
 /**
  * TideClock Main Program
  *
- * Phase 2: WiFi Connection & Web Interface
- * Provides both serial command interface and web-based control.
+ * Phase 3: NOAA Tide Integration
+ * Provides web interface with tide data fetching and motor control.
  */
 
 #include <Arduino.h>
@@ -16,6 +16,8 @@
 #include "core/ConfigManager.h"
 #include "network/WiFiManager.h"
 #include "network/WebServer.h"
+#include "network/TimeManager.h"
+#include "data/TideData.h"
 
 // Forward declarations
 void printHelp();
@@ -36,9 +38,29 @@ void setup() {
     // Initialize all hardware systems
     systemInitialization();
 
+    // Phase 3: Initialize Time Manager
+    Logger::info(CAT_SYSTEM, "Initializing Time Manager...");
+    TimeManager::initialize("EST5EDT,M3.2.0,M11.1.0");  // US Eastern Time
+
+    // Phase 3: Initialize Tide Data Manager
+    Logger::info(CAT_SYSTEM, "Initializing Tide Data Manager...");
+    TideDataManager::clear();
+
     // Initialize WiFi
     WiFiManager::begin();
     WiFiManager::connect();
+
+    // Phase 3: Sync time with NTP if WiFi connected
+    if (WiFiManager::isConnected()) {
+        Logger::info(CAT_SYSTEM, "Synchronizing time with NTP servers...");
+        if (TimeManager::syncWithNTP(10000)) {
+            Logger::info(CAT_SYSTEM, "NTP sync successful: " + TimeManager::getFormattedDateTime());
+        } else {
+            Logger::warning(CAT_SYSTEM, "NTP sync failed - tide fetch will not work until time is synced");
+        }
+    } else {
+        Logger::warning(CAT_SYSTEM, "WiFi not connected - NTP sync skipped");
+    }
 
     // Start web server
     TideClockWebServer::begin();
@@ -50,9 +72,10 @@ void setup() {
     printHelp();
 
     Logger::separator();
-    Logger::info(CAT_SYSTEM, "*** TIDECLOCK PHASE 2 READY ***");
+    Logger::info(CAT_SYSTEM, "*** TIDECLOCK PHASE 3 READY ***");
     Logger::logf(LOG_INFO, CAT_SYSTEM, "Web interface: http://%s", WiFiManager::getIPAddress().c_str());
     Logger::info(CAT_SYSTEM, "Serial interface: Active");
+    Logger::info(CAT_SYSTEM, "NOAA Integration: Enabled");
     Logger::separator();
 }
 

@@ -47,6 +47,8 @@ const char* StateManager::getStateName(SystemState state) {
         case STATE_READY:           return "READY";
         case STATE_HOMING:          return "HOMING";
         case STATE_TESTING:         return "TESTING";
+        case STATE_RUNNING_TIDE:    return "RUNNING_TIDE";
+        case STATE_FETCHING_DATA:   return "FETCHING_DATA";
         case STATE_EMERGENCY_STOP:  return "EMERGENCY_STOP";
         case STATE_ERROR:           return "ERROR";
         default:                    return "UNKNOWN";
