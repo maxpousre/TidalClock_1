@@ -165,8 +165,8 @@ void ConfigManager::setMotorOffset(uint8_t motorIndex, float offset) {
         return;
     }
 
-    if (offset < 0.5 || offset > 1.5) {
-        Logger::warning(CAT_SYSTEM, "Motor offset out of range (0.5-1.5)");
+    if (offset < 0.8 || offset > 1.2) {
+        Logger::warning(CAT_SYSTEM, "Motor offset out of range (0.8-1.2)");
         return;
     }
 

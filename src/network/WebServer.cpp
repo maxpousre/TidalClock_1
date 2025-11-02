@@ -49,6 +49,11 @@ void TideClockWebServer::begin() {
     server->on("/api/run-tide", HTTP_POST, handleRunTide);
     server->on("/api/sync-time", HTTP_POST, handleSyncTime);
 
+    // Motor offset calibration routes
+    server->on("/api/motor-offsets", HTTP_GET, handleGetMotorOffsets);
+    server->on("/api/motor-offsets", HTTP_POST, handleSaveMotorOffsets);
+    server->on("/api/reset-offsets", HTTP_POST, handleResetMotorOffsets);
+
     server->onNotFound(handleNotFound);
 
     server->begin();
@@ -564,6 +569,98 @@ void TideClockWebServer::handleSyncTime() {
         sendJSON(200, output.c_str());
     } else {
         sendError(500, "NTP sync failed - check WiFi connection");
+    }
+}
+
+void TideClockWebServer::handleGetMotorOffsets() {
+    Logger::info(CAT_WEB, "API: Get motor offsets requested");
+
+    StaticJsonDocument<1024> doc;
+    doc["success"] = true;
+
+    // Create array of all 24 motor offsets
+    JsonArray offsets = doc.createNestedArray("offsets");
+    for (uint8_t i = 0; i < 24; i++) {
+        offsets.add(ConfigManager::getMotorOffset(i));
+    }
+
+    String output;
+    serializeJson(doc, output);
+    sendJSON(200, output.c_str());
+}
+
+void TideClockWebServer::handleSaveMotorOffsets() {
+    Logger::info(CAT_WEB, "API: Save motor offsets requested");
+
+    // Parse request body
+    if (!server->hasArg("plain")) {
+        sendError(400, "Missing request body");
+        return;
+    }
+
+    StaticJsonDocument<1024> doc;
+    DeserializationError error = deserializeJson(doc, server->arg("plain"));
+
+    if (error) {
+        sendError(400, "Invalid JSON");
+        return;
+    }
+
+    // Validate that offsets array exists
+    if (!doc.containsKey("offsets")) {
+        sendError(400, "Missing 'offsets' array");
+        return;
+    }
+
+    JsonArray offsets = doc["offsets"];
+    if (offsets.size() != 24) {
+        sendError(400, "Expected 24 motor offsets");
+        return;
+    }
+
+    // Validate and save each offset
+    uint8_t successCount = 0;
+    for (uint8_t i = 0; i < 24; i++) {
+        float offset = offsets[i];
+
+        // Validate range (0.8 to 1.2)
+        if (offset < 0.8 || offset > 1.2) {
+            Logger::logf(LOG_WARNING, CAT_WEB,
+                        "Motor %u offset %.3f out of range (0.8-1.2)", i, offset);
+            continue;
+        }
+
+        // Save to config
+        ConfigManager::setMotorOffset(i, offset);
+        successCount++;
+    }
+
+    if (successCount == 24) {
+        // Save to EEPROM
+        if (ConfigManager::save()) {
+            Logger::info(CAT_WEB, "All motor offsets saved to EEPROM");
+            sendSuccess("Motor offsets saved successfully");
+        } else {
+            sendError(500, "Failed to save configuration to EEPROM");
+        }
+    } else {
+        String errorMsg = String("Only ") + successCount + "/24 offsets were valid";
+        sendError(400, errorMsg.c_str());
+    }
+}
+
+void TideClockWebServer::handleResetMotorOffsets() {
+    Logger::info(CAT_WEB, "API: Reset motor offsets requested");
+
+    // Reset all offsets to 1.0
+    ConfigManager::resetMotorOffsets();
+
+    // Save to EEPROM
+    if (ConfigManager::save()) {
+        Logger::info(CAT_WEB, "Motor offsets reset to 1.0 and saved");
+        sendSuccess("All motor offsets reset to 1.0");
+    } else {
+        sendError(500, "Failed to save configuration to EEPROM");
     }
 }
 
