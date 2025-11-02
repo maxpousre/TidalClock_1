@@ -57,6 +57,11 @@ private:
     static void handleRunTide();
     static void handleSyncTime();
 
+    // Motor offset calibration endpoints
+    static void handleGetMotorOffsets();
+    static void handleSaveMotorOffsets();
+    static void handleResetMotorOffsets();
+
     // Helper functions
     static void sendJSON(int code, const char* json);
     static void sendError(int code, const char* message);

@@ -404,8 +404,26 @@ const char* getWebUI() {
                 <div class="card">
                     <h3>Motor Offset Calibration</h3>
                     <div class="alert alert-info">
-                        <strong>Phase 5 Feature:</strong> Motor offset calibration (per-motor multipliers 0.8-1.2) will be available in a future update.
+                        <strong>Purpose:</strong> Compensate for mechanical variations between motors.
+                        Offsets are multipliers applied to motor run times (range: 0.80 to 1.20, default: 1.00).
+                        <br><br>
+                        <strong>Calibration Process:</strong>
+                        <ol style="margin: 10px 0 0 20px;">
+                            <li>Run program with all offsets at 1.0 (default)</li>
+                            <li>Observe which motors run too short or too long</li>
+                            <li>Adjust offsets: increase for short motors, decrease for long motors</li>
+                            <li>Save and run program again to verify</li>
+                        </ol>
                     </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 15px; margin: 20px 0;">
+                        <!-- Motor offset inputs will be generated here -->
+                        <div class="form-group" style="margin: 0;" id="offsetInputs">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    <button class="btn btn-success" onclick="saveMotorOffsets()">Save Motor Offsets</button>
+                    <button class="btn btn-secondary" onclick="resetMotorOffsets()">Reset All to 1.0</button>
+                    <button class="btn btn-secondary" onclick="loadMotorOffsets()">Reload</button>
                 </div>
             </div>
 
@@ -520,6 +538,7 @@ const char* getWebUI() {
             refreshSwitches();
             loadConfiguration();
             updateTideDisplay();
+            loadMotorOffsets();
             startAutoRefresh();
         });
 
@@ -805,6 +824,125 @@ const char* getWebUI() {
 
         function formatBytes(bytes) {
             return (bytes / 1024).toFixed(1) + ' KB';
+        }
+
+        // Motor offset calibration functions
+        async function loadMotorOffsets() {
+            try {
+                const response = await fetch('/api/motor-offsets');
+                const data = await response.json();
+
+                if (!data.success) {
+                    console.error('Failed to load motor offsets');
+                    return;
+                }
+
+                // Create input fields for all 24 motors
+                const container = document.getElementById('offsetInputs');
+                container.innerHTML = '';
+
+                for (let i = 0; i < 24; i++) {
+                    const offset = data.offsets[i];
+                    const isModified = Math.abs(offset - 1.0) > 0.001;
+
+                    const wrapper = document.createElement('div');
+                    wrapper.style.marginBottom = '10px';
+
+                    const label = document.createElement('label');
+                    label.textContent = 'Hour ' + i;
+                    label.style.fontWeight = isModified ? 'bold' : 'normal';
+                    label.style.color = isModified ? '#667eea' : '#4a5568';
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.id = 'offset_' + i;
+                    input.value = offset.toFixed(2);
+                    input.min = 0.80;
+                    input.max = 1.20;
+                    input.step = 0.01;
+                    input.style.width = '100%';
+                    input.style.padding = '8px';
+                    input.style.border = isModified ? '2px solid #667eea' : '1px solid #cbd5e0';
+                    input.style.borderRadius = '6px';
+                    input.style.fontSize = '14px';
+
+                    wrapper.appendChild(label);
+                    wrapper.appendChild(input);
+                    container.appendChild(wrapper);
+                }
+
+            } catch (error) {
+                console.error('Failed to load motor offsets:', error);
+                alert('Failed to load motor offsets: ' + error.message);
+            }
+        }
+
+        async function saveMotorOffsets() {
+            try {
+                // Collect all offset values
+                const offsets = [];
+                let hasInvalid = false;
+
+                for (let i = 0; i < 24; i++) {
+                    const input = document.getElementById('offset_' + i);
+                    const value = parseFloat(input.value);
+
+                    // Validate range
+                    if (value < 0.80 || value > 1.20) {
+                        alert('Motor ' + i + ' offset is out of range (0.80-1.20)');
+                        hasInvalid = true;
+                        break;
+                    }
+
+                    offsets.push(value);
+                }
+
+                if (hasInvalid) {
+                    return;
+                }
+
+                // Send to server
+                const response = await fetch('/api/motor-offsets', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ offsets })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Motor offsets saved successfully!');
+                    await loadMotorOffsets();  // Reload to show updated values
+                } else {
+                    alert('Failed to save: ' + (data.error || 'Unknown error'));
+                }
+
+            } catch (error) {
+                console.error('Failed to save motor offsets:', error);
+                alert('Failed to save motor offsets: ' + error.message);
+            }
+        }
+
+        async function resetMotorOffsets() {
+            if (!confirm('Reset all motor offsets to 1.0? This cannot be undone.')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/reset-offsets', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('All motor offsets reset to 1.0');
+                    await loadMotorOffsets();  // Reload to show updated values
+                } else {
+                    alert('Failed to reset: ' + (data.error || 'Unknown error'));
+                }
+
+            } catch (error) {
+                console.error('Failed to reset motor offsets:', error);
+                alert('Failed to reset motor offsets: ' + error.message);
+            }
         }
     </script>
 </body>
