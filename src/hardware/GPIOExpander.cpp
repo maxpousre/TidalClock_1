@@ -76,8 +76,8 @@ bool GPIOExpander::begin() {
         Logger::error(CAT_I2C, "Failed to initialize Switch Board 1 at 0x24");
         success = false;
     } else {
-        // Only configure pins 0-7 (8 switches on this board)
-        for (uint8_t pin = 0; pin < 8; pin++) {
+        // Only configure pins 0-7 (8 switches on this board) (I edited this like from 'pin < 8' to 'pin < 16' to initialize all pins)
+        for (uint8_t pin = 0; pin < 16; pin++) {
             switchBoard1.pinMode(pin, INPUT_PULLUP);
         }
         Logger::info(CAT_I2C, "Switch Board 1 initialized (Switches 16-23)");

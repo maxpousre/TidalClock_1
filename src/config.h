@@ -22,8 +22,8 @@
 #define MCP_MOTOR_0   0x20      // Motors 0-7 control (GPA0-GPB7)
 #define MCP_MOTOR_1   0x21      // Motors 8-15 control (GPA0-GPB7)
 #define MCP_MOTOR_2   0x22      // Motors 16-23 control (GPA0-GPB7)
-#define MCP_SWITCH_0  0x23      // Switches 0-15 input (GPA0-GPB7)
-#define MCP_SWITCH_1  0x24      // Switches 16-23 input (GPA0-GPA7)
+#define MCP_SWITCH_0  0x23      // Switches 12-24 input (GPA0-GPB7)
+#define MCP_SWITCH_1  0x24      // Switches 0-11 input (GPA0-GPA7)
 
 // I2C Error Handling
 #define I2C_RETRY_ATTEMPTS 3
@@ -101,8 +101,8 @@ const MotorPinMap MOTOR_PIN_MAP[NUM_MOTORS] = {
  * Switch Pin Mapping
  * Each switch uses 1 input pin on MCP23017
  *
- * Switch 0-15:  MCP 0x23 (Board 3)
- * Switch 16-23: MCP 0x24 (Board 4)
+ * Switch 12-23:  MCP 0x23 (Board 3)
+ * Switch 0-11: MCP 0x24 (Board 4)
  */
 struct SwitchPinMap {
     uint8_t mcpAddress;     // Which MCP23017 board
@@ -112,32 +112,60 @@ struct SwitchPinMap {
 // Switch to MCP board mapping lookup table
 const SwitchPinMap SWITCH_PIN_MAP[NUM_MOTORS] = {
     // Switches 0-15 on Board 3 (0x23)
-    {MCP_SWITCH_0, 0},      // Switch 0: GPA0
-    {MCP_SWITCH_0, 1},      // Switch 1: GPA1
-    {MCP_SWITCH_0, 2},      // Switch 2: GPA2
-    {MCP_SWITCH_0, 3},      // Switch 3: GPA3
-    {MCP_SWITCH_0, 4},      // Switch 4: GPA4
-    {MCP_SWITCH_0, 5},      // Switch 5: GPA5
-    {MCP_SWITCH_0, 6},      // Switch 6: GPA6
-    {MCP_SWITCH_0, 7},      // Switch 7: GPA7
-    {MCP_SWITCH_0, 8},      // Switch 8: GPB0
-    {MCP_SWITCH_0, 9},      // Switch 9: GPB1
-    {MCP_SWITCH_0, 10},     // Switch 10: GPB2
-    {MCP_SWITCH_0, 11},     // Switch 11: GPB3
-    {MCP_SWITCH_0, 12},     // Switch 12: GPB4
-    {MCP_SWITCH_0, 13},     // Switch 13: GPB5
-    {MCP_SWITCH_0, 14},     // Switch 14: GPB6
-    {MCP_SWITCH_0, 15},     // Switch 15: GPB7
+   // {MCP_SWITCH_0, 0},      // Switch 0: GPA0
+    //{MCP_SWITCH_0, 1},      // Switch 1: GPA1
+    //{MCP_SWITCH_0, 2},      // Switch 2: GPA2
+    //{MCP_SWITCH_0, 3},      // Switch 3: GPA3
+    //{MCP_SWITCH_0, 4},      // Switch 4: GPA4
+    //{MCP_SWITCH_0, 5},      // Switch 5: GPA5
+    //{MCP_SWITCH_0, 6},      // Switch 6: GPA6
+    //{MCP_SWITCH_0, 7},      // Switch 7: GPA7
+    //{MCP_SWITCH_0, 8},      // Switch 8: GPB0
+    //{MCP_SWITCH_0, 9},      // Switch 9: GPB1
+    //{MCP_SWITCH_0, 10},     // Switch 10: GPB2
+    //{MCP_SWITCH_0, 11},     // Switch 11: GPB3
+    //{MCP_SWITCH_0, 12},     // Switch 12: GPB4
+    //{MCP_SWITCH_0, 13},     // Switch 13: GPB5
+    //{MCP_SWITCH_0, 14},     // Switch 14: GPB6
+    //{MCP_SWITCH_0, 15},     // Switch 15: GPB7
 
     // Switches 16-23 on Board 4 (0x24)
-    {MCP_SWITCH_1, 0},      // Switch 16: GPA0
-    {MCP_SWITCH_1, 1},      // Switch 17: GPA1
-    {MCP_SWITCH_1, 2},      // Switch 18: GPA2
-    {MCP_SWITCH_1, 3},      // Switch 19: GPA3
-    {MCP_SWITCH_1, 4},      // Switch 20: GPA4
-    {MCP_SWITCH_1, 5},      // Switch 21: GPA5
-    {MCP_SWITCH_1, 6},      // Switch 22: GPA6
-    {MCP_SWITCH_1, 7}       // Switch 23: GPA7
+    //{MCP_SWITCH_1, 0},      // Switch 16: GPA0
+    //{MCP_SWITCH_1, 1},      // Switch 17: GPA1
+    //{MCP_SWITCH_1, 2},      // Switch 18: GPA2
+    //{MCP_SWITCH_1, 3},      // Switch 19: GPA3
+    //{MCP_SWITCH_1, 4},      // Switch 20: GPA4
+    //{MCP_SWITCH_1, 5},      // Switch 21: GPA5
+    //{MCP_SWITCH_1, 6},      // Switch 22: GPA6
+    //{MCP_SWITCH_1, 7}       // Switch 23: GPA7
+
+    // Switches 0-12 on Board 4 (0x24)
+    {MCP_SWITCH_1, 13},      // Switch 00: GPB5
+    {MCP_SWITCH_1, 12},      // Switch 01: GPB4
+    {MCP_SWITCH_1, 11},      // Switch 02: GPB3
+    {MCP_SWITCH_1, 10},      // Switch 03: GPB2
+    {MCP_SWITCH_1, 9},      // Switch 04: GPB1
+    {MCP_SWITCH_1, 8},      // Switch 05: GPB0
+    {MCP_SWITCH_1, 0},      // Switch 06: GPA0
+    {MCP_SWITCH_1, 1},       // Switch 07: GPA1
+    {MCP_SWITCH_1, 2},      // Switch 08: GPA2
+    {MCP_SWITCH_1, 3},      // Switch 09: GPA3
+    {MCP_SWITCH_1, 4},      // Switch 10: GPA4
+    {MCP_SWITCH_1, 5},      // Switch 11: GPA5
+
+    // Switches 0-15 on Board 3 (0x23)
+    {MCP_SWITCH_0, 14},      // Switch 12: GPB6
+    {MCP_SWITCH_0, 13},      // Switch 13: GPB5
+    {MCP_SWITCH_0, 12},      // Switch 14: GPB4
+    {MCP_SWITCH_0, 11},      // Switch 15: GPB3
+    {MCP_SWITCH_0, 10},      // Switch 16: GPB2
+    {MCP_SWITCH_0, 9},      // Switch 17: GPB1
+    {MCP_SWITCH_0, 8},      // Switch 18: GPB0
+    {MCP_SWITCH_0, 0},      // Switch 19: GPA0
+    {MCP_SWITCH_0, 1},      // Switch 20: GPA1
+    {MCP_SWITCH_0, 2},      // Switch 21: GPA2
+    {MCP_SWITCH_0, 3},     // Switch 22: GPA3
+    {MCP_SWITCH_0, 4},     // Switch 23: GPA4
 };
 
 // ============================================================================
