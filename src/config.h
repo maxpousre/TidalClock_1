@@ -67,34 +67,34 @@ struct MotorPinMap {
 // Motor to MCP board mapping lookup table
 const MotorPinMap MOTOR_PIN_MAP[NUM_MOTORS] = {
     // Motors 0-7 on Board 0 (0x20)
-    {MCP_MOTOR_0, 0, 1},    // Motor 0: GPA0, GPA1
-    {MCP_MOTOR_0, 2, 3},    // Motor 1: GPA2, GPA3
-    {MCP_MOTOR_0, 4, 5},    // Motor 2: GPA4, GPA5
-    {MCP_MOTOR_0, 6, 7},    // Motor 3: GPA6, GPA7
-    {MCP_MOTOR_0, 8, 9},    // Motor 4: GPB0, GPB1
-    {MCP_MOTOR_0, 10, 11},  // Motor 5: GPB2, GPB3
-    {MCP_MOTOR_0, 12, 13},  // Motor 6: GPB4, GPB5
-    {MCP_MOTOR_0, 14, 15},  // Motor 7: GPB6, GPB7
+    {MCP_MOTOR_0, 4, 5},    // Motor 0: GPA4, GPA5
+    {MCP_MOTOR_0, 6, 7},    // Motor 1: GPA6, GPA7
+    {MCP_MOTOR_0, 0, 1},    // Motor 2: GPA0, GPA1
+    {MCP_MOTOR_0, 2, 3},    // Motor 3: GPA2, GPA3
+    {MCP_MOTOR_0, 10, 11},    // Motor 4: GPB2, GPB3
+    {MCP_MOTOR_0, 8, 9},  // Motor 5: GPB0, GPB1
+    {MCP_MOTOR_0, 14, 15},  // Motor 6: GPB6, GPB7
+    {MCP_MOTOR_0, 12, 13},  // Motor 7: GPB4, GPB5
 
     // Motors 8-15 on Board 1 (0x21)
-    {MCP_MOTOR_1, 0, 1},    // Motor 8: GPA0, GPA1
-    {MCP_MOTOR_1, 2, 3},    // Motor 9: GPA2, GPA3
-    {MCP_MOTOR_1, 4, 5},    // Motor 10: GPA4, GPA5
-    {MCP_MOTOR_1, 6, 7},    // Motor 11: GPA6, GPA7
-    {MCP_MOTOR_1, 8, 9},    // Motor 12: GPB0, GPB1
-    {MCP_MOTOR_1, 10, 11},  // Motor 13: GPB2, GPB3
-    {MCP_MOTOR_1, 12, 13},  // Motor 14: GPB4, GPB5
-    {MCP_MOTOR_1, 14, 15},  // Motor 15: GPB6, GPB7
+    {MCP_MOTOR_1, 4, 5},    // Motor 8: GPA4, GPA5
+    {MCP_MOTOR_1, 6, 7},    // Motor 9: GPA6, GPA7
+    {MCP_MOTOR_1, 0, 1},    // Motor 10: GPA0, GPA1
+    {MCP_MOTOR_1, 2, 3},    // Motor 11: GPA2, GPA3
+    {MCP_MOTOR_1, 10, 11},    // Motor 12: GPB2, GPB3
+    {MCP_MOTOR_1, 8, 9},  // Motor 13: GPB0, GPB1
+    {MCP_MOTOR_1, 14, 15},  // Motor 14: GPB6, GPB7
+    {MCP_MOTOR_1, 12, 13},  // Motor 15: GPB4, GPB5
 
     // Motors 16-23 on Board 2 (0x22)
-    {MCP_MOTOR_2, 0, 1},    // Motor 16: GPA0, GPA1
-    {MCP_MOTOR_2, 2, 3},    // Motor 17: GPA2, GPA3
-    {MCP_MOTOR_2, 4, 5},    // Motor 18: GPA4, GPA5
-    {MCP_MOTOR_2, 6, 7},    // Motor 19: GPA6, GPA7
-    {MCP_MOTOR_2, 8, 9},    // Motor 20: GPB0, GPB1
-    {MCP_MOTOR_2, 10, 11},  // Motor 21: GPB2, GPB3
-    {MCP_MOTOR_2, 12, 13},  // Motor 22: GPB4, GPB5
-    {MCP_MOTOR_2, 14, 15}   // Motor 23: GPB6, GPB7
+    {MCP_MOTOR_2, 4, 5},    // Motor 16: GPA4, GPA5
+    {MCP_MOTOR_2, 6, 7},    // Motor 17: GPA6, GPA7
+    {MCP_MOTOR_2, 0, 1},    // Motor 18: GPA0, GPA1
+    {MCP_MOTOR_2, 2, 3},    // Motor 19: GPA2, GPA3
+    {MCP_MOTOR_2, 10, 11},    // Motor 20: GPB2, GPB3
+    {MCP_MOTOR_2, 8, 9},  // Motor 21: GPB0, GPB1
+    {MCP_MOTOR_2, 14, 15},  // Motor 22: GPB6, GPB7
+    {MCP_MOTOR_2, 12, 13}   // Motor 23: GPB4, GPB5
 };
 
 /**
