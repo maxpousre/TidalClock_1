@@ -205,6 +205,85 @@ void ConfigManager::setAutoFetch(bool enabled, uint8_t hour) {
                  enabled ? "enabled" : "disabled", hour);
 }
 
+void ConfigManager::setLEDEnabled(bool enabled) {
+    config.ledEnabled = enabled;
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED system %s", enabled ? "enabled" : "disabled");
+}
+
+void ConfigManager::setLEDPin(uint8_t pin) {
+    // Validate GPIO pin range for ESP32
+    if (pin > 39) {
+        Logger::warning(CAT_SYSTEM, "Invalid GPIO pin (0-39)");
+        return;
+    }
+
+    // Warn about reserved pins
+    if (pin == 21 || pin == 22) {
+        Logger::warning(CAT_SYSTEM, "Warning: GPIO pin conflicts with I2C (21/22)");
+    }
+
+    config.ledPin = pin;
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED data pin set to GPIO %u", pin);
+}
+
+void ConfigManager::setLEDCount(uint16_t count) {
+    if (count < 1 || count > 300) {
+        Logger::warning(CAT_SYSTEM, "LED count out of range (1-300)");
+        return;
+    }
+
+    config.ledCount = count;
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED count set to %u", count);
+}
+
+void ConfigManager::setLEDMode(uint8_t mode) {
+    if (mode > LED_MODE_TEST) {
+        Logger::warning(CAT_SYSTEM, "Invalid LED mode");
+        return;
+    }
+
+    config.ledMode = mode;
+    const char* modeName = (mode == LED_MODE_STATIC) ? "Static" : "Test Pattern";
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED mode set to %s", modeName);
+}
+
+void ConfigManager::setLEDBrightness(uint8_t brightness) {
+    // Enforce maximum brightness cap (50% = 128)
+    if (brightness > LED_MAX_BRIGHTNESS) {
+        Logger::logf(LOG_WARNING, CAT_SYSTEM,
+                     "Brightness capped at maximum (%u)", LED_MAX_BRIGHTNESS);
+        brightness = LED_MAX_BRIGHTNESS;
+    }
+
+    config.ledBrightness = brightness;
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED brightness set to %u (%.0f%%)",
+                 brightness, (brightness / 255.0) * 100);
+}
+
+void ConfigManager::setLEDColorIndex(uint8_t colorIndex) {
+    if (colorIndex > 11) {  // 12 predefined colors (0-11)
+        Logger::warning(CAT_SYSTEM, "Invalid color index (0-11)");
+        return;
+    }
+
+    config.ledColorIndex = colorIndex;
+    Logger::logf(LOG_INFO, CAT_SYSTEM, "LED color index set to %u", colorIndex);
+}
+
+void ConfigManager::setLEDActiveHours(uint8_t startHour, uint8_t endHour) {
+    if (startHour > 23 || endHour > 23) {
+        Logger::warning(CAT_SYSTEM, "Invalid active hours (0-23)");
+        return;
+    }
+
+    config.ledStartHour = startHour;
+    config.ledEndHour = endHour;
+
+    Logger::logf(LOG_INFO, CAT_SYSTEM,
+                 "LED active hours set to %02u:00 - %02u:00",
+                 startHour, endHour);
+}
+
 bool ConfigManager::isValid() {
     return configLoaded && (strncmp(config.magic, CONFIG_MAGIC, 4) == 0);
 }
@@ -261,6 +340,16 @@ void ConfigManager::setDefaults() {
     for (uint8_t i = 0; i < 24; i++) {
         config.motorOffsets[i] = 1.0;
     }
+
+    // Phase 4: FastLED defaults
+    config.ledEnabled = false;                      // LED system off by default
+    config.ledPin = LED_DEFAULT_PIN;                // GPIO 15
+    config.ledCount = LED_DEFAULT_COUNT;            // 160 LEDs
+    config.ledMode = LED_MODE_STATIC;               // Static color mode
+    config.ledBrightness = LED_DEFAULT_BRIGHTNESS;  // 20% brightness (51/255)
+    config.ledColorIndex = 6;                       // Cyan (ocean theme)
+    config.ledStartHour = LED_DEFAULT_START_HOUR;   // 8 AM
+    config.ledEndHour = LED_DEFAULT_END_HOUR;       // 10 PM
 
     // Checksum will be calculated when saved
     config.checksum = 0;

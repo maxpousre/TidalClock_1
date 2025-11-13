@@ -194,6 +194,24 @@ const SwitchPinMap SWITCH_PIN_MAP[NUM_MOTORS] = {
 #define CONFIG_MAGIC "TIDE"             // Magic string to validate EEPROM data
 
 // ============================================================================
+// LED STRIP CONFIGURATION (WS2812B via FastLED)
+// ============================================================================
+
+#define LED_DEFAULT_PIN 15              // Default GPIO pin for LED data (user-configurable)
+#define LED_DEFAULT_COUNT 160           // Default number of LEDs (user-configurable)
+#define LED_MAX_BRIGHTNESS 128          // Maximum brightness (50% of 255 for safety)
+#define LED_DEFAULT_BRIGHTNESS 51       // Default brightness (20% of 255)
+#define LED_DEFAULT_START_HOUR 8        // Default active hours start (8 AM)
+#define LED_DEFAULT_END_HOUR 22         // Default active hours end (10 PM)
+#define LED_UPDATE_INTERVAL_MS 30       // LED update frame rate (~33 FPS)
+#define LED_FADE_DURATION_MS 2000       // Duration of fade on/off transitions
+#define LED_TEST_PATTERN_INTERVAL_MS 5000  // Test pattern change interval
+
+// LED Modes
+#define LED_MODE_STATIC 0               // Static color mode
+#define LED_MODE_TEST 1                 // Test pattern mode
+
+// ============================================================================
 // SERIAL COMMUNICATION
 // ============================================================================
 

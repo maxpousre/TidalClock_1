@@ -62,6 +62,11 @@ private:
     static void handleSaveMotorOffsets();
     static void handleResetMotorOffsets();
 
+    // Phase 4: LED Control endpoints
+    static void handleGetLEDConfig();
+    static void handleSaveLEDConfig();
+    static void handleLEDTest();
+
     // Helper functions
     static void sendJSON(int code, const char* json);
     static void sendError(int code, const char* message);

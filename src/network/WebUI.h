@@ -79,6 +79,7 @@ const char* getWebUI() {
         .badge-testing { background: #4299e1; color: white; }
         .badge-error { background: #f56565; color: white; }
         .badge-stop { background: #c53030; color: white; }
+        .badge-warning { background: #f59e0b; color: white; }
         .tabs {
             display: flex;
             background: #edf2f7;
@@ -305,6 +306,7 @@ const char* getWebUI() {
             <button class="tab" onclick="switchTab(1)">Advanced</button>
             <button class="tab" onclick="switchTab(2)">Configuration</button>
             <button class="tab" onclick="switchTab(3)">Status & Logs</button>
+            <button class="tab" onclick="switchTab(4)">LED Control</button>
         </div>
 
         <div class="content">
@@ -524,6 +526,157 @@ const char* getWebUI() {
                     </div>
                 </div>
             </div>
+
+            <!-- TAB 5: LED CONTROL -->
+            <div class="tab-panel" id="tab4">
+                <!-- LED System Controls Card -->
+                <div class="card">
+                    <h3>LED System Controls</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="ledEnabled">
+                            Enable LED Lighting System
+                        </label>
+                    </div>
+                    <div class="status-item">
+                        <strong>Status:</strong>
+                        <span id="ledStatus" class="status-badge badge-ready">Unknown</span>
+                    </div>
+                </div>
+
+                <!-- Basic Settings Card -->
+                <div class="card">
+                    <h3>Basic Settings</h3>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ledBrightness">Brightness (0-50% max for safety)</label>
+                            <input type="range" id="ledBrightness" min="0" max="128" value="51" style="width: 100%;">
+                            <span id="ledBrightnessValue">20%</span>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ledCount">Number of LEDs</label>
+                            <input type="number" id="ledCount" value="160" min="1" max="300">
+                        </div>
+                        <div class="form-group">
+                            <label for="ledPin">Data Pin (GPIO)</label>
+                            <input type="number" id="ledPin" value="15" min="0" max="39">
+                            <small style="color: #888;">Avoid GPIO 21, 22 (I2C)</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Display Mode Card -->
+                <div class="card">
+                    <h3>Display Mode</h3>
+                    <div class="form-group">
+                        <label>
+                            <input type="radio" name="ledMode" value="0" checked>
+                            Static Color
+                        </label>
+                    </div>
+                    <div class="form-group" id="staticColorGroup">
+                        <label for="ledColorIndex">Select Color:</label>
+                        <select id="ledColorIndex" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e0;">
+                            <option value="0">Warm White</option>
+                            <option value="1">Cool White</option>
+                            <option value="2">Red</option>
+                            <option value="3">Orange</option>
+                            <option value="4">Yellow</option>
+                            <option value="5">Green</option>
+                            <option value="6" selected>Cyan</option>
+                            <option value="7">Blue</option>
+                            <option value="8">Purple</option>
+                            <option value="9">Magenta</option>
+                            <option value="10">Ocean Blue</option>
+                            <option value="11">Deep Teal</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="radio" name="ledMode" value="1">
+                            Test Pattern (cycles through diagnostic patterns)
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Active Hours Card -->
+                <div class="card">
+                    <h3>Active Hours</h3>
+                    <p style="color: #666; font-size: 14px; margin-bottom: 15px;">
+                        LEDs will automatically turn off outside these hours
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="ledStartHour">Start Hour (0-23)</label>
+                            <select id="ledStartHour" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e0;">
+                                <option value="0">00:00 (Midnight)</option>
+                                <option value="1">01:00</option>
+                                <option value="2">02:00</option>
+                                <option value="3">03:00</option>
+                                <option value="4">04:00</option>
+                                <option value="5">05:00</option>
+                                <option value="6">06:00</option>
+                                <option value="7">07:00</option>
+                                <option value="8" selected>08:00</option>
+                                <option value="9">09:00</option>
+                                <option value="10">10:00</option>
+                                <option value="11">11:00</option>
+                                <option value="12">12:00 (Noon)</option>
+                                <option value="13">13:00</option>
+                                <option value="14">14:00</option>
+                                <option value="15">15:00</option>
+                                <option value="16">16:00</option>
+                                <option value="17">17:00</option>
+                                <option value="18">18:00</option>
+                                <option value="19">19:00</option>
+                                <option value="20">20:00</option>
+                                <option value="21">21:00</option>
+                                <option value="22">22:00</option>
+                                <option value="23">23:00</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ledEndHour">End Hour (0-23)</label>
+                            <select id="ledEndHour" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #cbd5e0;">
+                                <option value="0">00:00 (Midnight)</option>
+                                <option value="1">01:00</option>
+                                <option value="2">02:00</option>
+                                <option value="3">03:00</option>
+                                <option value="4">04:00</option>
+                                <option value="5">05:00</option>
+                                <option value="6">06:00</option>
+                                <option value="7">07:00</option>
+                                <option value="8">08:00</option>
+                                <option value="9">09:00</option>
+                                <option value="10">10:00</option>
+                                <option value="11">11:00</option>
+                                <option value="12">12:00 (Noon)</option>
+                                <option value="13">13:00</option>
+                                <option value="14">14:00</option>
+                                <option value="15">15:00</option>
+                                <option value="16">16:00</option>
+                                <option value="17">17:00</option>
+                                <option value="18">18:00</option>
+                                <option value="19">19:00</option>
+                                <option value="20">20:00</option>
+                                <option value="21">21:00</option>
+                                <option value="22" selected>22:00</option>
+                                <option value="23">23:00</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons Card -->
+                <div class="card">
+                    <h3>Actions</h3>
+                    <button class="btn btn-success" onclick="saveLEDConfig()">💾 Save LED Configuration</button>
+                    <button class="btn btn-warning" onclick="testLEDPattern()">🔦 Run Test Pattern</button>
+                    <div id="ledMessage" style="margin-top: 15px; padding: 10px; border-radius: 4px; display: none;"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -539,7 +692,14 @@ const char* getWebUI() {
             loadConfiguration();
             updateTideDisplay();
             loadMotorOffsets();
+            loadLEDConfig();
             startAutoRefresh();
+
+            // LED brightness slider update
+            document.getElementById('ledBrightness').addEventListener('input', function(e) {
+                const percentage = Math.round((e.target.value / 255) * 100);
+                document.getElementById('ledBrightnessValue').textContent = percentage + '%';
+            });
         });
 
         // Tab switching
@@ -577,6 +737,23 @@ const char* getWebUI() {
                 document.getElementById('wifiRSSI').textContent = data.wifi.rssi ? data.wifi.rssi + ' dBm' : 'N/A';
                 document.getElementById('freeHeap').textContent = formatBytes(data.freeHeap);
                 document.getElementById('emergencyStopStatus').textContent = data.motor.emergencyStop ? 'ACTIVE' : 'Clear';
+
+                // Update LED status
+                if (data.led) {
+                    const ledStatusEl = document.getElementById('ledStatus');
+                    if (ledStatusEl) {
+                        ledStatusEl.textContent = data.led.status;
+                        // Color code the status badge
+                        ledStatusEl.className = 'status-badge';
+                        if (data.led.status === 'Active') {
+                            ledStatusEl.className += ' badge-ready';
+                        } else if (data.led.status === 'Outside Active Hours') {
+                            ledStatusEl.className += ' badge-warning';
+                        } else {
+                            ledStatusEl.className += ' badge-stop';
+                        }
+                    }
+                }
 
             } catch (error) {
                 console.error('Status refresh failed:', error);
@@ -942,6 +1119,117 @@ const char* getWebUI() {
             } catch (error) {
                 console.error('Failed to reset motor offsets:', error);
                 alert('Failed to reset motor offsets: ' + error.message);
+            }
+        }
+
+        // ============================================================================
+        // LED CONTROL FUNCTIONS (Phase 4)
+        // ============================================================================
+
+        async function loadLEDConfig() {
+            try {
+                const response = await fetch('/api/led-config');
+                const data = await response.json();
+
+                // Populate form fields
+                document.getElementById('ledEnabled').checked = data.enabled;
+                document.getElementById('ledPin').value = data.pin;
+                document.getElementById('ledCount').value = data.count;
+                document.getElementById('ledBrightness').value = data.brightness;
+                document.getElementById('ledBrightnessValue').textContent = Math.round((data.brightness / 255) * 100) + '%';
+                document.getElementById('ledColorIndex').value = data.colorIndex;
+                document.getElementById('ledStartHour').value = data.startHour;
+                document.getElementById('ledEndHour').value = data.endHour;
+
+                // Set mode radio button
+                const modeRadios = document.getElementsByName('ledMode');
+                modeRadios.forEach(radio => {
+                    radio.checked = (parseInt(radio.value) === data.mode);
+                });
+
+            } catch (error) {
+                console.error('Failed to load LED configuration:', error);
+            }
+        }
+
+        async function saveLEDConfig() {
+            const messageEl = document.getElementById('ledMessage');
+
+            try {
+                // Get selected mode
+                const modeRadios = document.getElementsByName('ledMode');
+                let selectedMode = 0;
+                modeRadios.forEach(radio => {
+                    if (radio.checked) selectedMode = parseInt(radio.value);
+                });
+
+                const config = {
+                    enabled: document.getElementById('ledEnabled').checked,
+                    pin: parseInt(document.getElementById('ledPin').value),
+                    count: parseInt(document.getElementById('ledCount').value),
+                    mode: selectedMode,
+                    brightness: parseInt(document.getElementById('ledBrightness').value),
+                    colorIndex: parseInt(document.getElementById('ledColorIndex').value),
+                    startHour: parseInt(document.getElementById('ledStartHour').value),
+                    endHour: parseInt(document.getElementById('ledEndHour').value)
+                };
+
+                const response = await fetch('/api/led-config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(config)
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    messageEl.textContent = '✓ ' + data.message;
+                    messageEl.style.backgroundColor = '#d4edda';
+                    messageEl.style.color = '#155724';
+                    messageEl.style.display = 'block';
+                    setTimeout(() => { messageEl.style.display = 'none'; }, 3000);
+                } else {
+                    messageEl.textContent = '✗ ' + (data.error || 'Unknown error');
+                    messageEl.style.backgroundColor = '#f8d7da';
+                    messageEl.style.color = '#721c24';
+                    messageEl.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Failed to save LED configuration:', error);
+                messageEl.textContent = '✗ Failed to save: ' + error.message;
+                messageEl.style.backgroundColor = '#f8d7da';
+                messageEl.style.color = '#721c24';
+                messageEl.style.display = 'block';
+            }
+        }
+
+        async function testLEDPattern() {
+            const messageEl = document.getElementById('ledMessage');
+
+            try {
+                const response = await fetch('/api/led-test', { method: 'POST' });
+                const data = await response.json();
+
+                if (data.success) {
+                    messageEl.textContent = '✓ Test pattern activated! Watch your LED strip.';
+                    messageEl.style.backgroundColor = '#d1ecf1';
+                    messageEl.style.color = '#0c5460';
+                    messageEl.style.display = 'block';
+                    setTimeout(() => { messageEl.style.display = 'none'; }, 5000);
+                } else {
+                    messageEl.textContent = '✗ ' + (data.error || 'Unknown error');
+                    messageEl.style.backgroundColor = '#f8d7da';
+                    messageEl.style.color = '#721c24';
+                    messageEl.style.display = 'block';
+                }
+
+            } catch (error) {
+                console.error('Failed to trigger test pattern:', error);
+                messageEl.textContent = '✗ Failed: ' + error.message;
+                messageEl.style.backgroundColor = '#f8d7da';
+                messageEl.style.color = '#721c24';
+                messageEl.style.display = 'block';
             }
         }
     </script>

@@ -12,6 +12,7 @@
 #include "hardware/GPIOExpander.h"
 #include "hardware/SwitchReader.h"
 #include "hardware/MotorController.h"
+#include "hardware/LEDController.h"
 #include "core/StateManager.h"
 #include "core/ConfigManager.h"
 #include "network/WiFiManager.h"
@@ -87,6 +88,9 @@ void loop() {
     // Handle WiFi events
     WiFiManager::handle();
 
+    // Update LED controller
+    LEDController::update();
+
     // Check for serial commands
     if (Serial.available() > 0) {
         processSerialCommand();
@@ -133,6 +137,12 @@ void systemInitialization() {
     if (!MotorController::begin()) {
         Logger::error(CAT_SYSTEM, "Motor controller initialization failed!");
         allSuccess = false;
+    }
+
+    // Step 7: Initialize LED controller
+    if (!LEDController::begin()) {
+        Logger::warning(CAT_SYSTEM, "LED controller initialization failed (non-critical)");
+        // LED failure is non-critical, don't set allSuccess to false
     }
 
     Logger::separator();
