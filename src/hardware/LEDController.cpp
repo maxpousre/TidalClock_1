@@ -240,9 +240,7 @@ const char* LEDController::getStatusString() {
 
 bool LEDController::isWithinActiveHours() {
     // Get current hour from TimeManager
-    time_t now = TimeManager::getCurrentTime();
-    struct tm* timeinfo = localtime(&now);
-    int currentHour = timeinfo->tm_hour;
+    int currentHour = TimeManager::getCurrentHour();
 
     // Handle case where end hour is before start hour (crosses midnight)
     if (endHour <= startHour) {
