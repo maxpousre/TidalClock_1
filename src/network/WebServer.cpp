@@ -9,6 +9,7 @@
 #include "../core/ConfigManager.h"
 #include "../hardware/MotorController.h"
 #include "../hardware/SwitchReader.h"
+#include "../hardware/LEDController.h"
 #include "../utils/Logger.h"
 #include "WiFiManager.h"
 #include <ArduinoJson.h>
@@ -53,6 +54,11 @@ void TideClockWebServer::begin() {
     server->on("/api/motor-offsets", HTTP_GET, handleGetMotorOffsets);
     server->on("/api/motor-offsets", HTTP_POST, handleSaveMotorOffsets);
     server->on("/api/reset-offsets", HTTP_POST, handleResetMotorOffsets);
+
+    // Phase 4: LED Control routes
+    server->on("/api/led-config", HTTP_GET, handleGetLEDConfig);
+    server->on("/api/led-config", HTTP_POST, handleSaveLEDConfig);
+    server->on("/api/led-test", HTTP_POST, handleLEDTest);
 
     server->onNotFound(handleNotFound);
 
@@ -138,6 +144,12 @@ void TideClockWebServer::handleGetStatus() {
     JsonObject tideData = doc.createNestedObject("tideData");
     tideData["available"] = false;
     tideData["message"] = "NOAA integration coming in Phase 3";
+
+    // LED status (Phase 4)
+    JsonObject led = doc.createNestedObject("led");
+    led["enabled"] = LEDController::isEnabled();
+    led["status"] = LEDController::getStatusString();
+    led["withinActiveHours"] = LEDController::isWithinActiveHours();
 
     // Serialize and send
     String output;
@@ -662,6 +674,146 @@ void TideClockWebServer::handleResetMotorOffsets() {
     } else {
         sendError(500, "Failed to save configuration to EEPROM");
     }
+}
+
+// ============================================================================
+// LED CONTROL ENDPOINTS (Phase 4)
+// ============================================================================
+
+void TideClockWebServer::handleGetLEDConfig() {
+    Logger::info(CAT_WEB, "API: Get LED configuration");
+
+    const TideClockConfig& config = ConfigManager::getConfig();
+
+    StaticJsonDocument<512> doc;
+    doc["enabled"] = config.ledEnabled;
+    doc["pin"] = config.ledPin;
+    doc["count"] = config.ledCount;
+    doc["mode"] = config.ledMode;
+    doc["brightness"] = config.ledBrightness;
+    doc["colorIndex"] = config.ledColorIndex;
+    doc["startHour"] = config.ledStartHour;
+    doc["endHour"] = config.ledEndHour;
+
+    // Add predefined color names for UI
+    JsonArray colors = doc.createNestedArray("colorNames");
+    colors.add("Warm White");
+    colors.add("Cool White");
+    colors.add("Red");
+    colors.add("Orange");
+    colors.add("Yellow");
+    colors.add("Green");
+    colors.add("Cyan");
+    colors.add("Blue");
+    colors.add("Purple");
+    colors.add("Magenta");
+    colors.add("Ocean Blue");
+    colors.add("Deep Teal");
+
+    String output;
+    serializeJson(doc, output);
+    sendJSON(200, output.c_str());
+}
+
+void TideClockWebServer::handleSaveLEDConfig() {
+    Logger::info(CAT_WEB, "API: Save LED configuration");
+
+    // Parse JSON request body
+    if (!server->hasArg("plain")) {
+        sendError(400, "Missing request body");
+        return;
+    }
+
+    StaticJsonDocument<512> doc;
+    DeserializationError error = deserializeJson(doc, server->arg("plain"));
+
+    if (error) {
+        Logger::logf(LOG_ERROR, CAT_WEB, "JSON parse error: %s", error.c_str());
+        sendError(400, "Invalid JSON");
+        return;
+    }
+
+    // Update LED configuration with validation
+    bool configChanged = false;
+
+    if (doc.containsKey("enabled")) {
+        ConfigManager::setLEDEnabled(doc["enabled"]);
+        LEDController::setEnabled(doc["enabled"]);
+        configChanged = true;
+    }
+
+    if (doc.containsKey("pin")) {
+        uint8_t pin = doc["pin"];
+        ConfigManager::setLEDPin(pin);
+        configChanged = true;
+        // Note: Pin change requires reinit, handled after all changes
+    }
+
+    if (doc.containsKey("count")) {
+        uint16_t count = doc["count"];
+        ConfigManager::setLEDCount(count);
+        configChanged = true;
+        // Note: Count change requires reinit, handled after all changes
+    }
+
+    if (doc.containsKey("mode")) {
+        uint8_t mode = doc["mode"];
+        ConfigManager::setLEDMode(mode);
+        LEDController::setMode(mode);
+        configChanged = true;
+    }
+
+    if (doc.containsKey("brightness")) {
+        uint8_t brightness = doc["brightness"];
+        ConfigManager::setLEDBrightness(brightness);
+        LEDController::setBrightness(brightness);
+        configChanged = true;
+    }
+
+    if (doc.containsKey("colorIndex")) {
+        uint8_t colorIndex = doc["colorIndex"];
+        ConfigManager::setLEDColorIndex(colorIndex);
+        LEDController::setColorIndex(colorIndex);
+        configChanged = true;
+    }
+
+    if (doc.containsKey("startHour") && doc.containsKey("endHour")) {
+        uint8_t startHour = doc["startHour"];
+        uint8_t endHour = doc["endHour"];
+        ConfigManager::setLEDActiveHours(startHour, endHour);
+        LEDController::setActiveHours(startHour, endHour);
+        configChanged = true;
+    }
+
+    // If pin or count changed, reinitialize LED controller
+    if (doc.containsKey("pin") || doc.containsKey("count")) {
+        const TideClockConfig& config = ConfigManager::getConfig();
+        if (!LEDController::reinit(config.ledPin, config.ledCount)) {
+            sendError(500, "Failed to reinitialize LED controller");
+            return;
+        }
+    }
+
+    // Save configuration to EEPROM
+    if (configChanged) {
+        if (ConfigManager::save()) {
+            Logger::info(CAT_WEB, "LED configuration saved");
+            sendSuccess("LED configuration saved successfully");
+        } else {
+            sendError(500, "Failed to save configuration to EEPROM");
+        }
+    } else {
+        sendSuccess("No changes to save");
+    }
+}
+
+void TideClockWebServer::handleLEDTest() {
+    Logger::info(CAT_WEB, "API: LED test pattern requested");
+
+    // Trigger test pattern mode
+    LEDController::runTestPattern();
+
+    sendSuccess("Test pattern activated");
 }
 
 // ============================================================================

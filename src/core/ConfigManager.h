@@ -29,6 +29,16 @@ struct TideClockConfig {
     bool autoFetchEnabled;          // Enable automatic daily fetch
     uint8_t fetchHour;              // Hour to fetch (0-23, for automatic mode)
 
+    // Phase 4: FastLED Integration
+    bool ledEnabled;                // LED system on/off
+    uint8_t ledPin;                 // GPIO pin for LED data (default: 15)
+    uint16_t ledCount;              // Number of LEDs (default: 160)
+    uint8_t ledMode;                // 0=static, 1=test pattern
+    uint8_t ledBrightness;          // 0-50 enforced (default: 20)
+    uint8_t ledColorIndex;          // Index into predefined color array
+    uint8_t ledStartHour;           // Active hours start (default: 8)
+    uint8_t ledEndHour;             // Active hours end (default: 22)
+
     uint16_t checksum;              // Simple checksum for validation
 };
 
@@ -101,6 +111,17 @@ public:
      * Update automatic fetch settings
      */
     static void setAutoFetch(bool enabled, uint8_t hour);
+
+    /**
+     * Update LED configuration
+     */
+    static void setLEDEnabled(bool enabled);
+    static void setLEDPin(uint8_t pin);
+    static void setLEDCount(uint16_t count);
+    static void setLEDMode(uint8_t mode);
+    static void setLEDBrightness(uint8_t brightness);
+    static void setLEDColorIndex(uint8_t colorIndex);
+    static void setLEDActiveHours(uint8_t startHour, uint8_t endHour);
 
     /**
      * Validation helpers
